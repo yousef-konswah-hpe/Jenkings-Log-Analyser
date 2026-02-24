@@ -1,0 +1,9 @@
+
+requests
+python-jenkins
+flask
+flask-cors
+pymongo
+python-dotenv
+APScheduler
+beautifulsoup4

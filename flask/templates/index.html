@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jenkins Log Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.3s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-value {
+            color: #666;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #ffffff;
+            border: 2px solid #27ae60;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .result-title {
+            color: #27ae60;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .result-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .job-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .analysis-result {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .analysis-result h4 {
+            margin: 0 0 10px 0;
+            color: #27ae60;
+        }
+
+        .analysis-result pre {
+            margin: 0;
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Add Job Section Styles */
+        .add-job-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        .add-job-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .add-job-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .add-job-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            border: 2px solid #28a745;
+            margin-top: 15px;
+        }
+
+        .add-job-form h3 {
+            color: #28a745;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .add-job-form textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .add-job-form textarea:focus {
+            outline: none;
+            border-color: #28a745;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .cancel-btn {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+            transition: transform 0.3s;
+        }
+
+        .cancel-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Jenkins Log Analyzer</h1>
+            <p>AI-powered analysis of your latest Jenkins build logs</p>
+        </div>
+        
+        <div class="form-container">
+            <form id="jenkinsForm">
+                <div class="form-group">
+                    <label for="job_id">Select Jenkins Job *</label>
+                    <select id="job_id" name="job_id" required>
+                        <option value="">Loading jobs...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="jenkins_url">Jenkins URL </label>
+                    <input type="url" id="jenkins_url" name="jenkins_url" 
+                           placeholder="https://jenkins.example.com "
+                           title="Enter Jenkins server URL ">
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Jenkins Username </label>
+                    <input type="text" id="username" name="username" 
+                           placeholder="your-jenkins-username ">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Jenkins Password/API Token </label>
+                    <input type="password" id="password" name="password" 
+                           placeholder="your-password-or-api-token ">
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    Analyze Latest Jenkins Build
+                </button>
+            </form>
+            
+            <!-- Add Job Button and Form -->
+            <div class="add-job-section">
+                <button type="button" class="add-job-btn" id="addJobBtn">
+                    ➕ Add New Jenkins Job
+                </button>
+                
+                <div class="add-job-form" id="addJobForm" style="display: none;">
+                    <h3>Add New Jenkins Job</h3>
+                    <form id="newJobForm">
+                        <div class="form-group">
+                            <label for="new_job_name">Job Name *</label>
+                            <input type="text" id="new_job_name" name="name" required 
+                                   placeholder="e.g., System-Security-Test/AuthZ or Frontend/Build">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_jenkins_url">Jenkins URL *</label>
+                            <input type="url" id="new_jenkins_url" name="url" required 
+                                   placeholder="https://jenkins.example.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_username">Username *</label>
+                            <input type="text" id="new_username" name="username" required 
+                                   placeholder="your-jenkins-username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_password">Password/API Token *</label>
+                            <input type="password" id="new_password" name="password" required 
+                                   placeholder="your-password-or-api-token">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_email">Email (optional)</label>
+                            <input type="email" id="new_email" name="email" 
+                                   placeholder="your-email@example.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_description">Description (optional)</label>
+                            <textarea id="new_description" name="description" rows="2" 
+                                      placeholder="Brief description of this Jenkins job"></textarea>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="submit-btn" id="saveJobBtn">
+                                💾 Save Job
+                            </button>
+                            <button type="button" class="cancel-btn" id="cancelJobBtn">
+                                ❌ Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Email Scheduler Section -->
+            <div class="add-job-section" style="margin-top:40px;">
+                <h2 style="color:#3498db; margin-bottom:10px;">📧 Schedule Email Report</h2>
+                <form id="emailSchedulerForm">
+                    <div class="form-group">
+                        <label for="email_job_id">Select Jenkins Job *</label>
+                        <select id="email_job_id" name="job_id" required>
+                            <option value="">Loading jobs...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="email_address">Recipient Email *</label>
+                        <input type="email" id="email_address" name="email" required placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="email_frequency">Frequency</label>
+                        <select id="email_frequency" name="frequency">
+                            <option value="">Send Immediately</option>
+                            <option value="daily">Daily</option>
+                            <option value="hourly">Hourly</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn" id="scheduleEmailBtn">Schedule/Send Email Report</button>
+                </form>
+                <div class="error" id="emailErrorContainer" style="margin-top:10px;"></div>
+                <div class="result-container" id="emailResultContainer" style="margin-top:10px;"></div>
+            </div>
+            
+            <div class="error" id="errorContainer"></div>
+            
+            <div class="result-container" id="resultContainer">
+                <h3 class="result-title">🎯 Analysis Result</h3>
+                <div class="result-content" id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load jobs when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadJobs();
+        });
+
+        // Load jobs for both dropdowns
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                const result = await response.json();
+                const jobSelect = document.getElementById('job_id');
+                const emailJobSelect = document.getElementById('email_job_id');
+                if (result.success && result.jobs) {
+                    jobSelect.innerHTML = '<option value="">Select a Jenkins job...</option>';
+                    emailJobSelect.innerHTML = '<option value="">Select a Jenkins job...</option>';
+                    result.jobs.forEach(job => {
+                        const option1 = document.createElement('option');
+                        option1.value = job.id;
+                        option1.textContent = job.display_name;
+                        if (job.description) option1.title = job.description;
+                        jobSelect.appendChild(option1);
+                        const option2 = document.createElement('option');
+                        option2.value = job.id;
+                        option2.textContent = job.display_name;
+                        if (job.description) option2.title = job.description;
+                        emailJobSelect.appendChild(option2);
+                    });
+                } else {
+                    jobSelect.innerHTML = '<option value="">Error loading jobs</option>';
+                    emailJobSelect.innerHTML = '<option value="">Error loading jobs</option>';
+                    showError(result.error || 'Failed to load jobs from database');
+                }
+            } catch (error) {
+                const jobSelect = document.getElementById('job_id');
+                const emailJobSelect = document.getElementById('email_job_id');
+                jobSelect.innerHTML = '<option value="">Error loading jobs</option>';
+                emailJobSelect.innerHTML = '<option value="">Error loading jobs</option>';
+                showError('Network error while loading jobs: ' + error.message);
+            }
+        }
+
+        document.getElementById('jenkinsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Validate job selection (only required field)
+            if (!data.job_id) {
+                showError('Please select a Jenkins job');
+                return;
+            }
+            
+            // Clear previous results
+            hideError();
+            hideResult();
+            
+            console.log('Submitting data:', data); // Debug log
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading"></span> Analyzing Jenkins Log... This may take a few minutes.';
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log('Response status:', response.status); // Debug log
+                
+                const result = await response.json();
+                console.log('Response data:', result); // Debug log
+                
+                if (result.success) {
+                    // The Flask API returns the summary in the 'response' field
+                    const summary = result.response;
+                    console.log("Summary received, length:", summary ? summary.length : 0); 
+                    
+                    // Fallback test - if summary is empty or undefined, use a test message
+                    const displaySummary = summary || "TEST: No summary received from backend";
+                    
+                    showResult(displaySummary, result.job_name);
+                } else {
+                    showError(result.error || result.message || 'Analysis failed');
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                showError('Network error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Analyze Latest Jenkins Build';
+            }
+        });
+
+        function showResult(result, jobName) {
+            console.log('showResult called with result length:', result ? result.length : 0); // Debug log
+            
+            const resultContent = document.getElementById('resultContent');
+            const resultContainer = document.getElementById('resultContainer');
+            
+            // Create a more detailed result display
+            const escapedResult = result ? result.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'No result';
+            
+            resultContent.innerHTML = `
+                ${jobName ? `<div class="job-info"><strong>Job:</strong> ${jobName}</div>` : ''}
+                <div class="analysis-result">
+                    <h4>🤖 AI Analysis Summary:</h4>
+                    <pre style="white-space: pre-wrap; font-family: inherit; font-size: 14px; line-height: 1.5;">${escapedResult}</pre>
+                </div>
+            `;
+            
+            resultContainer.style.display = 'block';
+            resultContainer.style.visibility = 'visible'; // Force visibility
+            
+            // Scroll to result
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideResult() {
+            document.getElementById('resultContainer').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('errorContainer').textContent = message;
+            document.getElementById('errorContainer').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorContainer').style.display = 'none';
+        }
+
+        // Add Job functionality
+        document.getElementById('addJobBtn').addEventListener('click', function() {
+            const addJobForm = document.getElementById('addJobForm');
+            const addJobBtn = document.getElementById('addJobBtn');
+            
+            // Toggle form visibility
+            if (addJobForm.style.display === 'none') {
+                addJobForm.style.display = 'block';
+                addJobBtn.textContent = '🔼 Hide Add Job Form';
+                addJobForm.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                addJobForm.style.display = 'none';
+                addJobBtn.textContent = '➕ Add New Jenkins Job';
+            }
+        });
+
+        document.getElementById('cancelJobBtn').addEventListener('click', function() {
+            // Hide form and reset
+            document.getElementById('addJobForm').style.display = 'none';
+            document.getElementById('addJobBtn').textContent = '➕ Add New Jenkins Job';
+            document.getElementById('newJobForm').reset();
+            hideError();
+        });
+
+        document.getElementById('newJobForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            console.log('Adding new job:', data); // Debug log
+            
+            // Clear previous errors
+            hideError();
+            
+            // Show loading state
+            const saveBtn = document.getElementById('saveJobBtn');
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = '💾 Saving...';
+            
+            try {
+                const response = await fetch('/api/jobs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log('Add job response status:', response.status); // Debug log
+                
+                const result = await response.json();
+                console.log('Add job response data:', result); // Debug log
+                
+                if (response.ok && result.success) {
+                    // Success - show message and refresh job list
+                    showSuccess(`Job "${result.job_name}" added successfully!`);
+                    
+                    // Reset form and hide it
+                    document.getElementById('newJobForm').reset();
+                    document.getElementById('addJobForm').style.display = 'none';
+                    document.getElementById('addJobBtn').textContent = '➕ Add New Jenkins Job';
+                    
+                    // Refresh the job dropdown
+                    loadJobs();
+                } else {
+                    showError(result.error || 'Failed to add job');
+                }
+            } catch (error) {
+                console.error('Network error adding job:', error);
+                showError('Network error: ' + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        });
+
+        // Email Scheduler Form Submission
+        document.getElementById('emailSchedulerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const jobId = document.getElementById('email_job_id').value;
+            const email = document.getElementById('email_address').value;
+            const frequency = document.getElementById('email_frequency').value;
+            const errorContainer = document.getElementById('emailErrorContainer');
+            const resultContainer = document.getElementById('emailResultContainer');
+            errorContainer.style.display = 'none';
+            resultContainer.style.display = 'none';
+            if (!jobId || !email) {
+                errorContainer.textContent = 'Please select a job and enter a valid email.';
+                errorContainer.style.display = 'block';
+                return;
+            }
+            const btn = document.getElementById('scheduleEmailBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Scheduling...';
+            try {
+                const response = await fetch(`/schedule-email/${jobId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, frequency })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    resultContainer.textContent = result.message || 'Email scheduled!';
+                    resultContainer.style.display = 'block';
+                    resultContainer.style.background = '#d4edda';
+                    resultContainer.style.border = '1px solid #c3e6cb';
+                    resultContainer.style.color = '#155724';
+                } else {
+                    errorContainer.textContent = result.error || 'Failed to schedule email.';
+                    errorContainer.style.display = 'block';
+                }
+            } catch (err) {
+                errorContainer.textContent = 'Network error: ' + err.message;
+                errorContainer.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Schedule/Send Email Report';
+            }
+        });
+
+        function showSuccess(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.textContent = message;
+            errorContainer.style.display = 'block';
+            errorContainer.style.background = '#d4edda';
+            errorContainer.style.border = '1px solid #c3e6cb';
+            errorContainer.style.color = '#155724';
+            
+            // Hide success message after 5 seconds
+            setTimeout(() => {
+                hideError();
+                // Reset error container styles
+                errorContainer.style.background = '';
+                errorContainer.style.border = '';
+                errorContainer.style.color = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
