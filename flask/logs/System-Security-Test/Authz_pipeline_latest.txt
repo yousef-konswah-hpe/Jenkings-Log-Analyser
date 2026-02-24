@@ -1,0 +1,29 @@
+**Build Status:** The build has finished with a status of "SUCCESS", but there are errors in the test results.
+
+**Test Results:** Out of 18 tests, 6 tests have failed with a KeyError exception. The failed tests are:
+
+1. `test_invite_user_to_standard_ws_and_validate_permissions[chromium-std_workspace_name-Workspace Administrator]`
+2. `test_invite_user_to_standard_ws_and_validate_permissions[chromium-std_workspace_name-Workspace Operator]`
+3. `test_invite_user_to_standard_ws_and_validate_permissions[chromium-std_workspace_name-Workspace Observer]`
+4. `test_assigning_role_to_user_for_standard_ws_only[chromium-std_workspace_name-Workspace Administrator-admin_role_name]`
+5. `test_assigning_role_to_user_for_standard_ws_only[chromium-std_workspace_name-Workspace Operator-operator_role_name]`
+6. `test_assigning_role_to_user_for_standard_ws_only[chromium-std_workspace_name-Workspace Observer-observer_role_name]`
+
+**Error Analysis:** The error is a KeyError exception, which means that the code is trying to access a key that does not exist in a dictionary. In this case, the key is 'std_workspace_name'. This suggests that there is an issue with the test data or the way the test is being set up.
+
+**Key Steps and Errors:**
+
+1. The test `test_invite_user_to_standard_ws_and_validate_permissions` is trying to log in to the GLCP as a standard user, but it is failing with a KeyError exception.
+2. The test `test_assigning_role_to_user_for_standard_ws_only` is trying to assign a role to a user, but it is failing with a KeyError exception.
+3. The error is occurring in the `login_to_glcp_as_standard` fixture, which is trying to access the 'std_workspace_name' key in the `testcase_data` dictionary.
+
+**Recommendations:**
+
+1. Check the test data to ensure that the 'std_workspace_name' key exists in the `testcase_data` dictionary.
+2. Verify that the test is being set up correctly and that the `login_to_glcp_as_standard` fixture is being called correctly.
+3. Consider adding error handling to the test to handle the case where the 'std_workspace_name' key does not exist in the `testcase_data` dictionary.
+
+**Additional Information:**
+
+* The build took 1 hour, 43 minutes, and 42 seconds to complete.
+* The test results are being uploaded to
