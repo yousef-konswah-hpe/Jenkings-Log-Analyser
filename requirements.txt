@@ -1,0 +1,7 @@
+confluent_kafka
+requests
+python-jenkins
+flask
+flask-cors
+pymongo
+python-dotenv
