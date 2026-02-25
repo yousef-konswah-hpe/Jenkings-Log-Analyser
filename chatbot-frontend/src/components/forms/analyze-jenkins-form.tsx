@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AnalysisResultCard } from "@/components/common/analysis-result-card";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
+import { analyzeJenkinsBuild } from "@/lib/api";
 
 const analyzeSchema = z.object({
   jobId: z.string().min(1, "Please select a Jenkins job."),
@@ -31,7 +33,12 @@ const jobOptions = [
 ];
 
 export function AnalyzeJenkinsForm() {
-  const [result, setResult] = useState<string>("");
+  const [apiError, setApiError] = useState<string>("");
+  const [result, setResult] = useState<{
+    response: string;
+    jobName?: string;
+    buildNumber?: number | string;
+  } | null>(null);
 
   const form = useForm<AnalyzeFormValues>({
     resolver: zodResolver(analyzeSchema),
@@ -45,14 +52,30 @@ export function AnalyzeJenkinsForm() {
   });
 
   const onSubmit = async (values: AnalyzeFormValues) => {
-    setResult("");
+    setApiError("");
+    setResult(null);
 
-    // Step 4: validated UI flow (backend wiring in next step)
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const payload = {
+      job_id: values.jobId,
+      jenkins_url: values.jenkinsUrl?.trim() || undefined,
+      username: values.username?.trim() || undefined,
+      password: values.password?.trim() || undefined,
+    };
 
-    setResult(
-      `Validated request for ${values.jobId}. Ready to send analysis request to backend API.`
-    );
+    try {
+      const data = await analyzeJenkinsBuild(payload);
+      setResult({
+        response: data.response ?? "No analysis text returned.",
+        jobName: data.job_name,
+        buildNumber: data.build_number,
+      });
+    } catch (error) {
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : "Unexpected error while calling analysis API."
+      );
+    }
   };
 
   const isSubmitting = form.formState.isSubmitting;
@@ -106,7 +129,7 @@ export function AnalyzeJenkinsForm() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Validating...
+                  Analyzing...
                 </>
               ) : (
                 "Analyze Latest Jenkins Build"
@@ -116,12 +139,20 @@ export function AnalyzeJenkinsForm() {
         </form>
       </Form>
 
-      {result ? (
-        <Alert className="border-hpe-green-500/40 bg-white">
-          <Sparkles className="h-4 w-4 text-hpe-green-500" />
-          <AlertTitle>Validation success</AlertTitle>
-          <AlertDescription>{result}</AlertDescription>
+      {apiError ? (
+        <Alert variant="destructive" className="border-red-300 bg-white">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Analysis failed</AlertTitle>
+          <AlertDescription>{apiError}</AlertDescription>
         </Alert>
+      ) : null}
+
+      {result ? (
+        <AnalysisResultCard
+          response={result.response}
+          jobName={result.jobName}
+          buildNumber={result.buildNumber}
+        />
       ) : null}
     </div>
   );
