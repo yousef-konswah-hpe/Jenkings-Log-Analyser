@@ -157,4 +157,8 @@
   .text-hpe-green-400 {
     color: var(--hpe-green-400);
   }
+
+  .bg-hpe-green-500 {
+    background-color: var(--hpe-green-500);
+  }
 }
