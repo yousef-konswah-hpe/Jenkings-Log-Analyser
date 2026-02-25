@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Footer } from "@/components/layout/footer";
 import { TopNav } from "@/components/layout/top-nav";
 
 type AppShellProps = {
@@ -11,6 +12,7 @@ export function AppShell({ children }: AppShellProps) {
       <main className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
         <TopNav />
         {children}
+        <Footer />
       </main>
     </div>
   );
