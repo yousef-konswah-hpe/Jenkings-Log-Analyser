@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Database, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AnalysisResultCard } from "@/components/common/analysis-result-card";
+import { EmptyState } from "@/components/common/empty-state";
+import { FormLoadingSkeleton } from "@/components/common/form-loading-skeleton";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
 import { useJenkinsJobs } from "@/hooks/use-jenkins-jobs";
 import { analyzeJenkinsBuild } from "@/lib/api";
@@ -65,12 +68,14 @@ export function AnalyzeJenkinsForm() {
         jobName: data.job_name,
         buildNumber: data.build_number,
       });
+      toast.success("Analysis completed successfully.");
     } catch (error) {
-      setApiError(
+      const message =
         error instanceof Error
           ? error.message
-          : "Unexpected error while calling analysis API."
-      );
+          : "Unexpected error while calling analysis API.";
+      setApiError(message);
+      toast.error(message);
     }
   };
 
@@ -90,7 +95,18 @@ export function AnalyzeJenkinsForm() {
         </Alert>
       ) : null}
 
-      <Form {...form}>
+      {jobsLoading ? <FormLoadingSkeleton rows={4} /> : null}
+
+      {!jobsLoading && !jobsError && jobOptions.length === 0 ? (
+        <EmptyState
+          title="No Jenkins jobs found"
+          description="Add at least one Jenkins job in the backend to enable AI analysis."
+          icon={<Database className="h-5 w-5" />}
+        />
+      ) : null}
+
+      {!jobsLoading && jobOptions.length > 0 ? (
+        <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <RHFSelectField
@@ -146,6 +162,7 @@ export function AnalyzeJenkinsForm() {
           </div>
         </form>
       </Form>
+      ) : null}
 
       {apiError ? (
         <Alert variant="destructive" className="border-red-300 bg-white">
