@@ -154,6 +154,10 @@
     --tw-gradient-to: var(--hpe-blue-700) var(--tw-gradient-to-position);
   }
 
+  .bg-hpe-blue-700 {
+    background-color: var(--hpe-blue-700);
+  }
+
   .text-hpe-green-400 {
     color: var(--hpe-green-400);
   }

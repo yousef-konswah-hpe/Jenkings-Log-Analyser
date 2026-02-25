@@ -1,5 +1,6 @@
 import { SectionCard } from "@/components/common/section-card";
 import { AnalyzeJenkinsForm } from "@/components/forms/analyze-jenkins-form";
+import { ScheduleEmailForm } from "@/components/forms/schedule-email-form";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Separator } from "@/components/ui/separator";
@@ -24,11 +25,9 @@ export default function Home() {
 
         <SectionCard
           title="Schedule Email Report"
-          description="Reusable section for recipient and schedule controls."
+          description="Send immediately or schedule recurring report emails with validation."
         >
-          <p className="text-sm text-slate-600">
-            Next step: build validated scheduling form and API integration.
-          </p>
+          <ScheduleEmailForm />
         </SectionCard>
       </div>
     </AppShell>
