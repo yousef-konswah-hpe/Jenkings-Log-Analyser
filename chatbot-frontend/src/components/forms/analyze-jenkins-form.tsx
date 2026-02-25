@@ -11,6 +11,7 @@ import { Form } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AnalysisResultCard } from "@/components/common/analysis-result-card";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
+import { useJenkinsJobs } from "@/hooks/use-jenkins-jobs";
 import { analyzeJenkinsBuild } from "@/lib/api";
 
 const analyzeSchema = z.object({
@@ -26,13 +27,8 @@ const analyzeSchema = z.object({
 
 type AnalyzeFormValues = z.infer<typeof analyzeSchema>;
 
-const jobOptions = [
-  { label: "System-Security-Test", value: "System-Security-Test" },
-  { label: "Report-Management", value: "Report-Management" },
-  { label: "Sustainability-Dashboard", value: "Sustainability-Dashboard" },
-];
-
 export function AnalyzeJenkinsForm() {
+  const { jobs, loading: jobsLoading, error: jobsError } = useJenkinsJobs();
   const [apiError, setApiError] = useState<string>("");
   const [result, setResult] = useState<{
     response: string;
@@ -79,9 +75,21 @@ export function AnalyzeJenkinsForm() {
   };
 
   const isSubmitting = form.formState.isSubmitting;
+  const jobOptions = jobs.map((job) => ({
+    label: job.display_name,
+    value: job.id,
+  }));
 
   return (
     <div className="space-y-5">
+      {jobsError ? (
+        <Alert variant="destructive" className="border-red-300 bg-white">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Jobs unavailable</AlertTitle>
+          <AlertDescription>{jobsError}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -89,7 +97,7 @@ export function AnalyzeJenkinsForm() {
               control={form.control}
               name="jobId"
               label="Select Jenkins Job"
-              placeholder="Select a Jenkins job..."
+              placeholder={jobsLoading ? "Loading jobs..." : "Select a Jenkins job..."}
               options={jobOptions}
               description="Required. Choose the Jenkins job to analyze."
             />
@@ -123,7 +131,7 @@ export function AnalyzeJenkinsForm() {
           <div className="md:col-span-2 pt-2">
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || jobsLoading || jobOptions.length === 0}
               className="h-11 w-full bg-hpe-green-500 text-white hover:opacity-90"
             >
               {isSubmitting ? (
