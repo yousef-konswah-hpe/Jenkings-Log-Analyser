@@ -1,0 +1,30 @@
+<svg width="760" height="360" viewBox="0 0 760 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Jenkins AI dashboard illustration">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="760" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DFF3FF"/>
+      <stop offset="1" stop-color="#F2FBFF"/>
+    </linearGradient>
+    <linearGradient id="line" x1="120" y1="40" x2="620" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0073B8" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#00B388" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="760" height="360" rx="24" fill="url(#bg)"/>
+
+  <rect x="44" y="34" width="672" height="292" rx="18" fill="#FFFFFF"/>
+  <rect x="68" y="58" width="240" height="14" rx="7" fill="#E3F2FD"/>
+  <rect x="68" y="84" width="150" height="10" rx="5" fill="#D6EAF7"/>
+
+  <rect x="68" y="118" width="620" height="182" rx="14" fill="#F8FBFE"/>
+
+  <path d="M110 248C160 212 198 220 236 198C274 176 312 136 356 160C400 184 428 252 478 240C528 228 566 150 630 170" stroke="url(#line)" stroke-width="8" stroke-linecap="round"/>
+
+  <circle cx="236" cy="198" r="8" fill="#0073B8"/>
+  <circle cx="356" cy="160" r="8" fill="#0073B8"/>
+  <circle cx="478" cy="240" r="8" fill="#00B388"/>
+  <circle cx="630" cy="170" r="8" fill="#00B388"/>
+
+  <rect x="560" y="74" width="128" height="30" rx="15" fill="#E7F8F2"/>
+  <circle cx="578" cy="89" r="7" fill="#00B388"/>
+  <rect x="592" y="84" width="80" height="10" rx="5" fill="#7BCFB7"/>
+</svg>
