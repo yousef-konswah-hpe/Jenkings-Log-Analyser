@@ -1,5 +1,6 @@
 "use client";
 
+import { ReactNode } from "react";
 import { Control, FieldPath, FieldValues } from "react-hook-form";
 import {
   FormControl,
@@ -25,6 +26,7 @@ type TextFieldProps<TFieldValues extends FieldValues> = {
   placeholder?: string;
   description?: string;
   type?: "text" | "password" | "url";
+  icon?: ReactNode;
 };
 
 export function RHFTextField<TFieldValues extends FieldValues>({
@@ -34,6 +36,7 @@ export function RHFTextField<TFieldValues extends FieldValues>({
   placeholder,
   description,
   type = "text",
+  icon,
 }: TextFieldProps<TFieldValues>) {
   return (
     <FormField
@@ -43,13 +46,20 @@ export function RHFTextField<TFieldValues extends FieldValues>({
         <FormItem>
           <FormLabel className="text-sm font-semibold text-slate-800">{label}</FormLabel>
           <FormControl>
-            <Input
-              type={type}
-              placeholder={placeholder}
-              className="h-11 bg-white"
-              {...field}
-              value={(field.value as string) ?? ""}
-            />
+            <div className="relative">
+              {icon ? (
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500 dark:text-slate-300">
+                  {icon}
+                </span>
+              ) : null}
+              <Input
+                type={type}
+                placeholder={placeholder}
+                className={`h-11 bg-white ${icon ? "pl-10" : ""}`}
+                {...field}
+                value={(field.value as string) ?? ""}
+              />
+            </div>
           </FormControl>
           {description ? <FormDescription>{description}</FormDescription> : null}
           <FormMessage />
@@ -71,6 +81,7 @@ type SelectFieldProps<TFieldValues extends FieldValues> = {
   placeholder: string;
   options: SelectOption[];
   description?: string;
+  icon?: ReactNode;
 };
 
 export function RHFSelectField<TFieldValues extends FieldValues>({
@@ -80,6 +91,7 @@ export function RHFSelectField<TFieldValues extends FieldValues>({
   placeholder,
   options,
   description,
+  icon,
 }: SelectFieldProps<TFieldValues>) {
   return (
     <FormField
@@ -90,9 +102,16 @@ export function RHFSelectField<TFieldValues extends FieldValues>({
           <FormLabel className="text-sm font-semibold text-slate-800">{label}</FormLabel>
           <Select onValueChange={field.onChange} value={(field.value as string) ?? ""}>
             <FormControl>
-              <SelectTrigger className="h-11 w-full bg-white">
-                <SelectValue placeholder={placeholder} />
-              </SelectTrigger>
+              <div className="relative">
+                {icon ? (
+                  <span className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-slate-500 dark:text-slate-300">
+                    {icon}
+                  </span>
+                ) : null}
+                <SelectTrigger className={`h-11 w-full bg-white ${icon ? "pl-10" : ""}`}>
+                  <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+              </div>
             </FormControl>
             <SelectContent>
               {options.map((option) => (
