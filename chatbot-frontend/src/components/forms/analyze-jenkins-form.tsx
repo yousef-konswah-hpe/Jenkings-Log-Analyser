@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Database, Loader2 } from "lucide-react";
+import { AlertCircle, Database, KeyRound, Link2, Loader2, UserRound, Workflow } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -100,23 +100,35 @@ export function AnalyzeJenkinsForm() {
       {!jobsLoading && !jobsError && jobOptions.length === 0 ? (
         <EmptyState
           title="No Jenkins jobs found"
-          description="Add at least one Jenkins job in the backend to enable AI analysis."
+          description="You can still continue by typing a Job ID manually below."
           icon={<Database className="h-5 w-5" />}
         />
       ) : null}
 
-      {!jobsLoading && jobOptions.length > 0 ? (
-        <Form {...form}>
+      {!jobsLoading ? (
+      <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <RHFSelectField
-              control={form.control}
-              name="jobId"
-              label="Select Jenkins Job"
-              placeholder={jobsLoading ? "Loading jobs..." : "Select a Jenkins job..."}
-              options={jobOptions}
-              description="Required. Choose the Jenkins job to analyze."
-            />
+            {jobOptions.length > 0 ? (
+              <RHFSelectField
+                control={form.control}
+                name="jobId"
+                label="Select Jenkins Job"
+                placeholder="Select a Jenkins job..."
+                options={jobOptions}
+                description="Required. Choose the Jenkins job to analyze."
+                icon={<Workflow className="h-4 w-4" />}
+              />
+            ) : (
+              <RHFTextField
+                control={form.control}
+                name="jobId"
+                label="Jenkins Job ID"
+                placeholder="Enter job id (for example: 67b2...)"
+                description="No jobs found from API. Enter the backend job ID manually."
+                icon={<Workflow className="h-4 w-4" />}
+              />
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -126,6 +138,7 @@ export function AnalyzeJenkinsForm() {
               label="Jenkins URL"
               placeholder="https://jenkins.example.com"
               type="url"
+              icon={<Link2 className="h-4 w-4" />}
             />
           </div>
 
@@ -134,6 +147,7 @@ export function AnalyzeJenkinsForm() {
             name="username"
             label="Jenkins Username"
             placeholder="your-jenkins-username"
+            icon={<UserRound className="h-4 w-4" />}
           />
 
           <RHFTextField
@@ -142,12 +156,13 @@ export function AnalyzeJenkinsForm() {
             label="Jenkins Password / API Token"
             placeholder="your-password-or-api-token"
             type="password"
+            icon={<KeyRound className="h-4 w-4" />}
           />
 
           <div className="md:col-span-2 pt-2">
             <Button
               type="submit"
-              disabled={isSubmitting || jobsLoading || jobOptions.length === 0}
+              disabled={isSubmitting || jobsLoading}
               className="h-11 w-full bg-hpe-green-500 text-white hover:opacity-90"
             >
               {isSubmitting ? (
