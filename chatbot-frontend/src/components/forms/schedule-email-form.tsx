@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2, MailCheck } from "lucide-react";
+import { AlertCircle, Database, Loader2, MailCheck } from "lucide-react";
+import { toast } from "sonner";
 
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { EmptyState } from "@/components/common/empty-state";
+import { FormLoadingSkeleton } from "@/components/common/form-loading-skeleton";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
 import { useJenkinsJobs } from "@/hooks/use-jenkins-jobs";
 import { scheduleEmailReport } from "@/lib/api";
@@ -63,10 +66,12 @@ export function ScheduleEmailForm() {
       });
 
       setSuccessMessage(response.message);
+      toast.success(response.message);
     } catch (e) {
-      setApiError(
+      const message =
         e instanceof Error ? e.message : "Unexpected error while scheduling email."
-      );
+      setApiError(message);
+      toast.error(message);
     }
   };
 
@@ -80,7 +85,18 @@ export function ScheduleEmailForm() {
         </Alert>
       ) : null}
 
-      <Form {...form}>
+      {jobsLoading ? <FormLoadingSkeleton rows={3} /> : null}
+
+      {!jobsLoading && !jobsError && jobOptions.length === 0 ? (
+        <EmptyState
+          title="No Jenkins jobs found"
+          description="Add at least one Jenkins job in the backend before scheduling reports."
+          icon={<Database className="h-5 w-5" />}
+        />
+      ) : null}
+
+      {!jobsLoading && jobOptions.length > 0 ? (
+        <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <RHFSelectField
@@ -130,6 +146,7 @@ export function ScheduleEmailForm() {
           </div>
         </form>
       </Form>
+      ) : null}
 
       {apiError ? (
         <Alert variant="destructive" className="border-red-300 bg-white">
