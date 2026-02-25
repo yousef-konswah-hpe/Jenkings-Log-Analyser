@@ -1,4 +1,5 @@
 import { SectionCard } from "@/components/common/section-card";
+import { AnalyzeJenkinsForm } from "@/components/forms/analyze-jenkins-form";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Separator } from "@/components/ui/separator";
@@ -14,11 +15,9 @@ export default function Home() {
       <div className="grid gap-6">
         <SectionCard
           title="Analyze Jenkins Build"
-          description="Reusable section for Jenkins job input and analysis action."
+          description="Validated input powered by Zod + react-hook-form."
         >
-          <p className="text-sm text-slate-600">
-            Next step: wire full form with zod + react-hook-form.
-          </p>
+          <AnalyzeJenkinsForm />
         </SectionCard>
 
         <Separator />
