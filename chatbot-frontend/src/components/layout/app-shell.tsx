@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Footer } from "@/components/layout/footer";
+import { SupportChatWidget } from "@/components/support/support-chat-widget";
 import { TopNav } from "@/components/layout/top-nav";
 
 type AppShellProps = {
@@ -14,6 +15,7 @@ export function AppShell({ children }: AppShellProps) {
         {children}
         <Footer />
       </main>
+      <SupportChatWidget />
     </div>
   );
 }
