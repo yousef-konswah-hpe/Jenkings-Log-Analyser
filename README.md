@@ -25,13 +25,31 @@
   <img src="chatbot-frontend/public/images/jenkins-hero.svg" alt="Hero Banner" width="700" />
 </p>
 
-> *Add your own screenshots here: paste images into `chatbot-frontend/public/images/` and reference them below.*
+> Replace these placeholders with real screenshots by dropping files into `chatbot-frontend/public/images/`.
 
-<!-- Uncomment and replace with real screenshots:
-| Dashboard | Analysis Result | Email Report |
-|:-:|:-:|:-:|
-| ![Dashboard](chatbot-frontend/public/images/screenshot-dashboard.png) | ![Analysis](chatbot-frontend/public/images/screenshot-analysis.png) | ![Email](chatbot-frontend/public/images/screenshot-email.png) |
--->
+<p align="center">
+  <img src="chatbot-frontend/public/images/image1.png" alt="Image 1" width="700" />
+</p>
+
+<p align="center">
+  <img src="chatbot-frontend/public/images/image2.png" alt="Image 2" width="700" />
+</p>
+
+<p align="center">
+  <img src="chatbot-frontend/public/images/image3.png" alt="Image 3" width="700" />
+</p>
+
+<p align="center">
+  <img src="chatbot-frontend/public/images/image4.png" alt="Image 4" width="700" />
+</p>
+
+<p align="center">
+  <img src="chatbot-frontend/public/images/image5.png" alt="Image 5" width="700" />
+</p>
+
+<p align="center">
+  <img src="chatbot-frontend/public/images/image6.png" alt="Image 6" width="700" />
+</p>
 
 ---
 
