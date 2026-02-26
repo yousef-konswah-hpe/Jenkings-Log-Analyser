@@ -280,6 +280,10 @@ docker run -p 5005:5005 --env-file ../.env jenkins-log-analyzer
     <td align="center">
       <b>Yousef Konswah</b><br/>
       <a href="mailto:yousef.konswah@hpe.com">yousef.konswah@hpe.com</a>
+        </td>
+    <td align="center">
+      <b>Varshith</b><br/>
+      <a href="mailto:varshith-r@hpe.com">varshith-r@hpe.com</a>
     </td>
   </tr>
 </table>
