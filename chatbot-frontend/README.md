@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jenkins Log Analyzer Frontend
 
-## Getting Started
+Professional HPE-themed frontend built with Next.js 16, Tailwind CSS, shadcn/ui, and Zod validation.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS v4
+- shadcn/ui components
+- react-hook-form + zod validation
+- Sonner toasts
+
+## Prerequisites
+
+- Node.js 20+
+- Backend Flask API running (default expected at http://localhost:5005)
+
+## Environment Setup
+
+1. Create local env file from example:
+
+```bash
+cp .env.local.example .env.local
+```
+
+2. Update API base URL if needed:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5005
+```
+
+## Run Locally
+
+Always run commands from this folder:
+
+Jenkings-Log-Analyser/chatbot-frontend
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000
+
+## Quality Checks
+
+```bash
+npm run lint
+npm run build
+```
+
+## Available Scripts
+
+- `npm run dev` — start development server
+- `npm run build` — production build
+- `npm run start` — run production server
+- `npm run lint` — run ESLint
+
+## Troubleshooting
+
+### `npm run dev` fails with exit code 254
+
+You are likely running from the wrong directory. Ensure current folder is:
+
+Jenkings-Log-Analyser/chatbot-frontend
+
+Then run:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### API calls fail
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Confirm Flask backend is running on port 5005.
+- Check `.env.local` has the correct `NEXT_PUBLIC_API_BASE_URL`.
+- Verify backend health endpoint: `GET /api/health`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Feature Areas
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Analyze Jenkins Build (validated form + API response panel)
+- Schedule Email Report (validated form + immediate/scheduled send)
+- Reusable loading/empty states + toast notifications
+- Dark mode + professional HPE-themed layout

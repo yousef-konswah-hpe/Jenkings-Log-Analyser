@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jenkins Log Analyzer | HPE AI Operations",
-  description: "Professional HPE-themed Jenkins log analysis and email scheduling dashboard.",
+  title: "Jenkins Log Analyzer | HPE",
+  description: "Jenkins log analysis and email scheduling dashboard.",
 };
 
 export default function RootLayout({

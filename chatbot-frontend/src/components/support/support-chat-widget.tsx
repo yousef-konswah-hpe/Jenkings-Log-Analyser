@@ -2,30 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, MessageCircleQuestion, Send, X } from "lucide-react";
+import { getSupportChatReply } from "@/lib/api";
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
 };
-
-function generateAssistantReply(input: string) {
-  const q = input.toLowerCase();
-
-  if (q.includes("job") || q.includes("jenkins")) {
-    return "To analyze logs, choose a Jenkins job (or enter Job ID manually), fill credentials if needed, then click Analyze Latest Jenkins Build.";
-  }
-
-  if (q.includes("email") || q.includes("schedule")) {
-    return "Use Schedule Email Report to send immediately or set hourly/daily/weekly/monthly frequency.";
-  }
-
-  if (q.includes("error") || q.includes("failed")) {
-    return "Please share the exact error text shown in the form alert, and I can guide the fix step-by-step.";
-  }
-
-  return "I’m your AI support assistant. Ask me about Jenkins analysis, scheduling reports, or troubleshooting this dashboard.";
-}
 
 export function SupportChatWidget() {
   const [open, setOpen] = useState(false);
@@ -65,16 +48,31 @@ export function SupportChatWidget() {
     setMessages((prev) => [...prev, userMsg]);
     setSending(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    try {
+      const response = await getSupportChatReply(userText, {
+        source: "support-widget",
+      });
 
-    const reply: ChatMessage = {
-      id: `a-${Date.now()}`,
-      role: "assistant",
-      content: generateAssistantReply(userText),
-    };
+      const reply: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content: response,
+      };
 
-    setMessages((prev) => [...prev, reply]);
-    setSending(false);
+      setMessages((prev) => [...prev, reply]);
+    } catch (error) {
+      const fallback: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content:
+          error instanceof Error
+            ? `Support service is currently unavailable: ${error.message}`
+            : "Support service is currently unavailable.",
+      };
+      setMessages((prev) => [...prev, fallback]);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -92,10 +90,7 @@ export function SupportChatWidget() {
         <section className="fixed right-5 bottom-22 z-50 flex h-[500px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
           <header className="flex items-center gap-2 bg-[linear-gradient(90deg,#0B0F10_0%,#00B388_100%)] px-4 py-3 text-white">
             <Bot className="h-5 w-5" />
-            <div>
-              <p className="text-sm font-semibold">Support AI Agent</p>
-              <p className="text-xs text-white/90">Live assistant</p>
-            </div>
+            <p className="text-sm font-semibold">Support Agent</p>
           </header>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3 dark:bg-slate-950">
@@ -108,7 +103,35 @@ export function SupportChatWidget() {
                     : "max-w-[85%] rounded-xl bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100"
                 }
               >
-                {m.content}
+                {m.role === "assistant" ? (
+                  <div className="space-y-1.5 [&>p]:leading-relaxed">
+                    {m.content.split("\n").filter(Boolean).map((line, i) => {
+                      const trimmed = line.trim();
+                      const isBullet = /^[\-•\*]\s/.test(trimmed);
+                      const isNumbered = /^\d+[\.\)]\s/.test(trimmed);
+                      if (isBullet) {
+                        return (
+                          <div key={i} className="flex gap-1.5 pl-1">
+                            <span className="mt-0.5 text-hpe-green-400">•</span>
+                            <span>{trimmed.replace(/^[\-•\*]\s/, "")}</span>
+                          </div>
+                        );
+                      }
+                      if (isNumbered) {
+                        const num = trimmed.match(/^(\d+)[\.)]/)?.[1];
+                        return (
+                          <div key={i} className="flex gap-1.5 pl-1">
+                            <span className="font-semibold text-hpe-green-400 min-w-[1.1rem]">{num}.</span>
+                            <span>{trimmed.replace(/^\d+[\.\)]\s/, "")}</span>
+                          </div>
+                        );
+                      }
+                      return <p key={i}>{trimmed}</p>;
+                    })}
+                  </div>
+                ) : (
+                  m.content
+                )}
               </div>
             ))}
             {sending ? (

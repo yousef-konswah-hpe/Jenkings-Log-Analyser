@@ -49,11 +49,11 @@
 
 :root {
   --radius: 0.625rem;
-  --hpe-blue-900: #003d6b;
-  --hpe-blue-700: #0073b8;
+  --hpe-blue-900: #0b0f10;
+  --hpe-blue-700: #113227;
   --hpe-green-500: #00b388;
   --hpe-green-400: #22c55e;
-  --hpe-surface: #f4f7fb;
+  --hpe-surface: #f4faf7;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -88,7 +88,7 @@
 }
 
 .dark {
-  --hpe-surface: #0b1220;
+  --hpe-surface: #070b09;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -131,12 +131,13 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    letter-spacing: 0.01em;
-    line-height: 1.55;
+    letter-spacing: 0.012em;
+    line-height: 1.6;
   }
 
   .dark body {
     @apply text-slate-100;
+    font-weight: 500;
   }
 }
 
