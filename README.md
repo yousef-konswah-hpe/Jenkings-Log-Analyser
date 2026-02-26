@@ -1,1 +1,0 @@
-# Jenkings-Log-Analyser
