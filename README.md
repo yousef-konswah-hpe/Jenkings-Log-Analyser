@@ -25,8 +25,6 @@
   <img src="chatbot-frontend/public/images/jenkins-hero.svg" alt="Hero Banner" width="700" />
 </p>
 
-> Replace these placeholders with real screenshots by dropping files into `chatbot-frontend/public/images/`.
-
 <p align="center">
   <img src="chatbot-frontend/public/images/image1.png" alt="Image 1" width="700" />
 </p>
