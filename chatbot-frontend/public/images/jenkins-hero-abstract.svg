@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#07111A" />
+      <stop offset="100%" stop-color="#062635" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1">
+      <stop offset="0%" stop-color="#00B388" />
+      <stop offset="100%" stop-color="#7DE3FF" />
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" />
+    </filter>
+  </defs>
+
+  <rect width="1200" height="600" rx="16" fill="url(#bg)" />
+
+  <!-- subtle blurred accents -->
+  <g filter="url(#soft)" opacity="0.6">
+    <circle cx="220" cy="140" r="120" fill="#05333A" />
+    <circle cx="980" cy="460" r="160" fill="#052A3A" />
+  </g>
+
+  <!-- stacked log rectangles (representing logs/builds) -->
+  <g transform="translate(220,220)">
+    <rect x="0" y="0" width="520" height="40" rx="8" fill="#0F2B33" stroke="#13383F" />
+    <rect x="0" y="54" width="440" height="40" rx="8" fill="#0F2B33" stroke="#12363C" />
+    <rect x="0" y="108" width="360" height="40" rx="8" fill="#0F2B33" stroke="#113236" />
+    <rect x="0" y="162" width="300" height="40" rx="8" fill="#0F2B33" stroke="#102F33" />
+  </g>
+
+  <!-- magnifier (search/analysis) overlapping stacks -->
+  <g transform="translate(720,240)">
+    <circle cx="0" cy="0" r="78" fill="url(#accent)" opacity="0.14" />
+    <circle cx="0" cy="0" r="56" fill="#0F2B33" stroke="#7DE3FF" stroke-width="3" />
+    <circle cx="0" cy="0" r="30" fill="#061018" stroke="#7DE3FF" stroke-width="2" />
+    <rect x="38" y="38" width="86" height="16" rx="8" transform="rotate(35 38 38)" fill="#0F2B33" stroke="#173C41" />
+  </g>
+
+  <!-- small node connectors -->
+  <g stroke="#7DE3FF" stroke-opacity="0.12" stroke-width="2" fill="none">
+    <path d="M430 260 L620 245" />
+    <path d="M540 320 L700 300" />
+  </g>
+
+  <!-- accent dots on left stacks -->
+  <g fill="#7DE3FF" opacity="0.9">
+    <circle cx="160" cy="260" r="4" />
+    <circle cx="320" cy="314" r="5" />
+    <circle cx="420" cy="368" r="3" />
+  </g>
+
+  <!-- simple label -->
+  <text x="40" y="540" font-family="Inter, system-ui, Arial" font-size="16" fill="#7DE3FF" fill-opacity="0.14">Jenkins Log Analyzer</text>
+</svg>
