@@ -19,7 +19,7 @@
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 <p align="center">
   <img src="chatbot-frontend/public/images/jenkins-hero.svg" alt="Hero Banner" width="700" />
@@ -51,21 +51,21 @@
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| 🔍 **AI Log Analysis** | Fetch logs from any Jenkins job and get an AI-powered summary with root-cause analysis |
-| 📂 **Drag & Drop Upload** | Upload or paste raw log files directly — no Jenkins credentials needed |
-| 📧 **Email Reports** | One-click email delivery of analysis reports via SMTP |
-| ⏰ **Scheduled Analysis** | Register Jenkins jobs for automatic periodic analysis |
-| 🌙 **Dark Mode** | Full dark/light theme toggle with persistent preference |
-| 💬 **Support Chat** | Built-in AI chat widget for troubleshooting help |
-| 📊 **Chunked Processing** | Handles large log files by splitting them into manageable chunks |
+|  **AI Log Analysis** | Fetch logs from any Jenkins job and get an AI-powered summary with root-cause analysis |
+|  **Drag & Drop Upload** | Upload or paste raw log files directly — no Jenkins credentials needed |
+|  **Email Reports** | One-click email delivery of analysis reports via SMTP |
+|  **Scheduled Analysis** | Register Jenkins jobs for automatic periodic analysis |
+|  **Dark Mode** | Full dark/light theme toggle with persistent preference |
+|  **Support Chat** | Built-in AI chat widget for troubleshooting help |
+|  **Chunked Processing** | Handles large log files by splitting them into manageable chunks |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐        ┌─────────────────┐        ┌──────────────┐
@@ -118,7 +118,7 @@ Jenkings-Log-Analyser/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -246,7 +246,7 @@ Navigate to **http://localhost:3000** in your browser.
 
 ---
 
-## 🐳 Docker (Optional)
+##  Docker (Optional)
 
 ```bash
 cd flask
@@ -269,7 +269,7 @@ docker run -p 5005:5005 --env-file ../.env jenkins-log-analyzer
 
 ---
 
-## 👥 Authors
+##  Authors
 
 <table>
   <tr>
@@ -286,6 +286,6 @@ docker run -p 5005:5005 --env-file ../.env jenkins-log-analyzer
 
 ---
 
-## 📄 License
+## License
 
 This project is proprietary to **Hewlett Packard Enterprise (HPE)**. All rights reserved.
