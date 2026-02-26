@@ -10,13 +10,13 @@ export default function Home() {
     <AppShell>
       <PageHeader
         title="Jenkins Log Analyzer"
-        subtitle="AI-powered analysis with clean, reusable HPE-themed UI."
+        subtitle="AI-powered analysis of your latest Jenkins build logs"
       />
 
       <div className="grid gap-6">
         <SectionCard
           title="Analyze Jenkins Build"
-          description="Validated input powered by Zod + react-hook-form."
+          description="Select a Jenkins job or upload a log file to analyze."
         >
           <AnalyzeJenkinsForm />
         </SectionCard>
@@ -25,7 +25,7 @@ export default function Home() {
 
         <SectionCard
           title="Schedule Email Report"
-          description="Send immediately or schedule recurring report emails with validation."
+          description="Email analysis reports from a Jenkins job or an uploaded log file."
         >
           <ScheduleEmailForm />
         </SectionCard>

@@ -44,7 +44,7 @@ export function RHFTextField<TFieldValues extends FieldValues>({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-sm font-semibold text-slate-800">{label}</FormLabel>
+          <FormLabel className="text-sm font-semibold text-slate-800 dark:text-slate-200">{label}</FormLabel>
           <FormControl>
             <div className="relative">
               {icon ? (
@@ -55,7 +55,7 @@ export function RHFTextField<TFieldValues extends FieldValues>({
               <Input
                 type={type}
                 placeholder={placeholder}
-                className={`h-11 bg-white ${icon ? "pl-10" : ""}`}
+                className={`h-11 bg-white dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600 ${icon ? "pl-10" : ""}`}
                 {...field}
                 value={(field.value as string) ?? ""}
               />
@@ -99,7 +99,7 @@ export function RHFSelectField<TFieldValues extends FieldValues>({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-sm font-semibold text-slate-800">{label}</FormLabel>
+          <FormLabel className="text-sm font-semibold text-slate-800 dark:text-slate-200">{label}</FormLabel>
           <Select onValueChange={field.onChange} value={(field.value as string) ?? ""}>
             <FormControl>
               <div className="relative">
@@ -108,7 +108,7 @@ export function RHFSelectField<TFieldValues extends FieldValues>({
                     {icon}
                   </span>
                 ) : null}
-                <SelectTrigger className={`h-11 w-full bg-white ${icon ? "pl-10" : ""}`}>
+                <SelectTrigger className={`h-11 w-full bg-white dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600 ${icon ? "pl-10" : ""}`}>
                   <SelectValue placeholder={placeholder} />
                 </SelectTrigger>
               </div>

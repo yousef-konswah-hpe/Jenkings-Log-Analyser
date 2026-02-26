@@ -39,6 +39,12 @@ type ScheduleEmailResponse = {
   error?: string;
 };
 
+type SupportChatResponse = {
+  success: boolean;
+  response?: string;
+  error?: string;
+};
+
 export async function getJenkinsJobs(): Promise<JenkinsJob[]> {
   const res = await fetch(`${API_BASE_URL}/api/jobs`, {
     method: "GET",
@@ -126,4 +132,89 @@ export async function scheduleEmailReport(
   return {
     message: data.message || "Email request completed successfully.",
   };
+}
+
+export async function analyzeLogText(
+  logText: string,
+  filename?: string
+): Promise<AnalyzeApiResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/analyze-log`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ log_text: logText, filename }),
+  });
+
+  const raw = await res.text();
+  let data: AnalyzeApiResponse;
+
+  try {
+    data = JSON.parse(raw) as AnalyzeApiResponse;
+  } catch {
+    throw new Error(raw || "Invalid response from log analysis API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to analyze log content.");
+  }
+
+  return data;
+}
+
+export async function emailLogReport(
+  logText: string,
+  email: string,
+  filename?: string
+): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/email-log-report`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ log_text: logText, email, filename }),
+  });
+
+  const raw = await res.text();
+  let data: { success?: boolean; message?: string; error?: string };
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw || "Invalid response from email-log-report API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to email log report.");
+  }
+
+  return { message: data.message || "Email report sent." };
+}
+
+export async function getSupportChatReply(
+  message: string,
+  context?: Record<string, string>
+): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/api/chat/support`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message, context }),
+  });
+
+  const raw = await res.text();
+  let data: SupportChatResponse;
+
+  try {
+    data = JSON.parse(raw) as SupportChatResponse;
+  } catch {
+    throw new Error(raw || "Invalid response from support chat API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to get support chat response.");
+  }
+
+  return data.response || "No response from assistant.";
 }
