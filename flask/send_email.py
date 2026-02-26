@@ -199,10 +199,7 @@ class EmailReport:
 
         # Default email recipients
         self.default_recipients = [
-            "prasanna2@hpe.com",
-            "varshith-r@hpe.com",
-            "pushpalatha.pulicherla@hpe.com",
-            "sarada.a@hpe.com"
+            "nagasai.chintalapati@hpe.com"
         ]
 
         # For backward compatibility
