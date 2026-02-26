@@ -9,18 +9,6 @@
   Automatically fetch, analyze, and email actionable insights from CI/CD pipelines.
 </p>
 
-````markdown
-<p align="center">
-  <img src="chatbot-frontend/public/images/hpe1.png" alt="HPE Logo" width="120" />
-</p>
-
-<h1 align="center">Jenkins Log Analyzer</h1>
-
-<p align="center">
-  <b>AI-powered analysis of your Jenkins build logs</b><br/>
-  Automatically fetch, analyze, and email actionable insights from CI/CD pipelines.
-</p>
-
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white" />
@@ -33,44 +21,17 @@
 
 ## 📸 Screenshots
 
-Below are the screenshots (dark and light variants) used during development. Drop the real image files into `chatbot-frontend/public/images/` using the filenames shown below to have them render here.
-
 <p align="center">
-  <img src="chatbot-frontend/public/images/hero-dark.png" alt="Hero Banner (dark)" width="820" />
+  <img src="chatbot-frontend/public/images/jenkins-hero.svg" alt="Hero Banner" width="700" />
 </p>
 
-<p align="center">
-  <img src="chatbot-frontend/public/images/hero-light.png" alt="Hero Banner (light)" width="820" />
-</p>
+> *Add your own screenshots here: paste images into `chatbot-frontend/public/images/` and reference them below.*
 
-### Schedule Email (dark)
-<p align="center">
-  <img src="chatbot-frontend/public/images/schedule-dark.png" alt="Schedule Email (dark)" width="900" />
-</p>
-
-### Support Widget (collapsed)
-<p align="center">
-  <img src="chatbot-frontend/public/images/support-widget.png" alt="Support Widget" width="260" />
-</p>
-
-### Support Widget (response formatting)
-<p align="center">
-  <img src="chatbot-frontend/public/images/support-response.png" alt="Support Chat Response" width="360" />
-</p>
-
-### Example Email Received
-<p align="center">
-  <img src="chatbot-frontend/public/images/email-sent.png" alt="Email Sent Screenshot" width="740" />
-</p>
-
-> Image filenames (place these into `chatbot-frontend/public/images/`):
-
-- `hero-dark.png` — hero banner (dark theme)
-- `hero-light.png` — hero banner (light theme)
-- `schedule-dark.png` — schedule email form (dark)
-- `support-widget.png` — support agent widget (collapsed)
-- `support-response.png` — support chat response formatting
-- `email-sent.png` — sample email received screenshot
+<!-- Uncomment and replace with real screenshots:
+| Dashboard | Analysis Result | Email Report |
+|:-:|:-:|:-:|
+| ![Dashboard](chatbot-frontend/public/images/screenshot-dashboard.png) | ![Analysis](chatbot-frontend/public/images/screenshot-analysis.png) | ![Email](chatbot-frontend/public/images/screenshot-email.png) |
+-->
 
 ---
 
@@ -312,5 +273,3 @@ docker run -p 5005:5005 --env-file ../.env jenkins-log-analyzer
 ## 📄 License
 
 This project is proprietary to **Hewlett Packard Enterprise (HPE)**. All rights reserved.
-
-````
