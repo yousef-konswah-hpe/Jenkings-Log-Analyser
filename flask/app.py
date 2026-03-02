@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -7,14 +7,17 @@ import pymongo
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import os
+import sys
 from dotenv import load_dotenv
 from send_email import EmailReport
-import requests
 import time
 import threading
 import random
 from datetime import datetime
 from urllib.parse import quote_plus
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from common.llm_client import LLMClient, LLMClientConfig, LLMClientError, env_bool
 
 # Load environment variables (prioritize .env.local for localhost)
 if os.path.exists('.env.local'):
@@ -85,10 +88,31 @@ CORS(app)
 scheduler = BackgroundScheduler()
 scheduler.start()
 
-# New AI Model API configuration - same as app_simple.py
-API_URL = "https://llama-3-1-70b.project-user-private-cloud-ai.serving.pcai.si18.vcfmr.local/v1/chat/completions"
-MODEL_NAME = "meta/llama-3.1-70b-instruct"
-AUTH_TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IlZla1BZOExBakpaVzRKQk5ORnU4REZOT0kxSGctTUExTW9PV3hZMl9na2sifQ.eyJhdWQiOlsiYXBpIiwiaXN0aW8tY2EiXSwiZXhwIjoxNzczNTk1MzI3LCJpYXQiOjE3NjU4MTkzMjcsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwianRpIjoiZTk2MWFmZWItYzA2MC00OTgyLWI0MWYtYzg3ZDA1ODI5NGQxIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJ1aSIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJpc3ZjLWVwLTE3NjU4MTkzMjc5MzciLCJ1aWQiOiJmZmRlYzlhOC04NTA1LTQwNjItYmFlMy0yZGVmNzljZjRmNGMifX0sIm5iZiI6MTc2NTgxOTMyNywic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OnVpOmlzdmMtZXAtMTc2NTgxOTMyNzkzNyJ9.viBjRQT0zKZ_Hpsfb6GuRvb1ONtxdDQoMDXa5wBN22Xeol4qMOkQKhosQtrjewDA2CvikB3HilkKHQr99avsCQeh7pJGeh1baofkJ1ROtHRHqqPw6eln0IMKoF_O7DkWycdNRrvHRJiT2XFrtTtqQeDbzWzy0B3r8goCnO8gKFwmPW4BLtcelafdnSoegpkP-bpXQv4PBSsn-0YqG8As7EYjLuNosQX8NgpQIvSTSVD35l1ZAKNLIPpCnvFse_TlNUpcvAo2z7godyyji_z_l5H-KnpIHBYyxy3Tm_k01QoXwGqIMZfsPgl-_L8VdG_SutPjpNCTLPkSOuqPgpec3A"
+# LLM configuration (environment-based)
+LLM_API_URL = os.getenv("LLM_API_URL", "")
+LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "meta/llama-3.1-70b-instruct")
+LLM_AUTH_TOKEN = os.getenv("LLM_AUTH_TOKEN", "")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
+LLM_TIMEOUT_SECONDS = int(os.getenv("LLM_TIMEOUT_SECONDS", "600"))
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
+LLM_VERIFY_TLS = env_bool("LLM_VERIFY_TLS", True)
+
+llm_client = LLMClient(
+    LLMClientConfig(
+        api_url=LLM_API_URL,
+        auth_token=LLM_AUTH_TOKEN,
+        default_model=LLM_MODEL_NAME,
+        provider=LLM_PROVIDER,
+        timeout_seconds=LLM_TIMEOUT_SECONDS,
+        verify_tls=LLM_VERIFY_TLS,
+        max_retries=LLM_MAX_RETRIES,
+    )
+)
+
+if llm_client.is_configured():
+    print(f"[CONFIG] LLM configured (provider={LLM_PROVIDER}, model={LLM_MODEL_NAME}, TLS verify={LLM_VERIFY_TLS})")
+else:
+    print("[CONFIG] LLM is not fully configured. For Ollama set LLM_PROVIDER=ollama, LLM_API_URL, LLM_MODEL_NAME.")
 
 SUMMARY_PROMPT = (
     "Analyze the following Jenkins build log, with a focus on the pytest execution output. Identify and summarize:\n\n"
@@ -98,6 +122,18 @@ SUMMARY_PROMPT = (
     "**Group the findings** to help testers quickly backtrack in the browser and debug.\n\n"
     "Format your response in a structured way that makes it easy for testers to understand what failed and where to look for fixes.\n\n"
     "Jenkins build log to analyze:\n\n"
+)
+
+SUPPORT_CHAT_SYSTEM_PROMPT = (
+    "You are a concise support assistant for Jenkins Log Analyzer. "
+    "Help users with Jenkins job analysis, scheduling email reports, troubleshooting errors, and usage steps. "
+    "IMPORTANT FORMATTING RULES:\n"
+    "- Always respond in short, numbered steps or bullet points.\n"
+    "- Never write long paragraphs. Keep each point to 1-2 sentences max.\n"
+    "- Use numbered lists (1. 2. 3.) for sequential steps.\n"
+    "- Use bullet points (• ) for non-sequential tips or options.\n"
+    "- Start with a brief one-line summary if helpful, then list the steps.\n"
+    "- If user asks for secrets or harmful actions, refuse and suggest safe alternatives."
 )
 
 TOKENS_PER_CHUNK = 60000  # Conservative limit to fit within 131k token context as the context window is 131072 tokens
@@ -122,86 +158,42 @@ def split_by_chars(text, chunk_size):
     return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
 def summarize_chunk(chunk):
-    """Summarize a single chunk using new AI API with improved error handling"""
+    """Summarize a single chunk using shared LLM client"""
     # Check chunk size and truncate if necessary
     max_chunk_chars = 60000 * 4  # ~60k tokens worth of characters for safety
     if len(chunk) > max_chunk_chars:
         print(f"[AI] Chunk too large ({len(chunk)} chars), truncating to {max_chunk_chars} chars")
         chunk = chunk[-max_chunk_chars:]  # Take the end of the log which is usually most important
     
+    if not llm_client.is_configured():
+        return "[ERROR] LLM not configured. For Ollama set LLM_PROVIDER=ollama, LLM_API_URL, LLM_MODEL_NAME."
+
     prompt = SUMMARY_PROMPT + chunk
     
-    # Prepare the request payload in OpenAI chat format
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a Jenkins build log analysis expert. Provide detailed, structured analysis of build logs."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "max_tokens": 1024,
-        "temperature": 0,
-        "frequency_penalty": 0,
-        "presence_penalty": 0.5
-    }
-    
-    # Prepare headers
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {AUTH_TOKEN}'
-    }
-    
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            print(f"[AI] Making API request (attempt {attempt + 1}/{max_retries})")
-            
-            response = requests.post(
-                API_URL,
-                headers=headers,
-                json=payload,
-                verify=False,
-                timeout=600  # 10 minutes timeout for large chunks
-            )
-            
-            if response.status_code == 200:
-                response_json = response.json()
-                
-                # Extract the content from choices (same as app_simple.py)
-                if response_json.get('choices') and len(response_json['choices']) > 0:
-                    content = response_json['choices'][0]['message']['content']
-                    if content and content.strip():
-                        print(f"[AI] ✅ Chunk processed successfully ({response_json.get('usage', {}).get('total_tokens', 'unknown')} tokens)")
-                        return content
-                    else:
-                        print(f"[AI] ⚠️ Empty content in response on attempt {attempt + 1}")
-                else:
-                    print(f"[AI] ⚠️ No choices found in response on attempt {attempt + 1}")
-            else:
-                print(f"[AI] ⚠️ HTTP {response.status_code} on attempt {attempt + 1}: {response.text[:200]}")
-                
-            if attempt < max_retries - 1:
-                wait_time = (2 ** attempt) + random.uniform(1, 3)
-                print(f"[AI] Waiting {wait_time:.1f} seconds before retry...")
-                time.sleep(wait_time)
-                
-        except requests.exceptions.Timeout:
-            print(f"[AI] ⚠️ Request timeout on attempt {attempt + 1}")
-        except requests.exceptions.ConnectionError as e:
-            print(f"[AI] ⚠️ Connection error on attempt {attempt + 1}: {e}")
-        except Exception as e:
-            print(f"[AI] ⚠️ Unexpected error on attempt {attempt + 1}: {e}")
-            
-        if attempt < max_retries - 1:
-            wait_time = (2 ** attempt) + random.uniform(2, 5)
-            time.sleep(wait_time)
-    
-    return f"[ERROR] Failed to summarize chunk after {max_retries} attempts"
+    try:
+        print("[AI] Calling shared LLM client for chunk summary")
+        content, usage = llm_client.chat_completion(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a Jenkins build log analysis expert. Provide detailed, structured analysis of build logs.",
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            max_tokens=1024,
+            temperature=0,
+            frequency_penalty=0,
+            presence_penalty=0.5,
+        )
+        print(f"[AI] ✅ Chunk processed successfully ({usage.get('total_tokens', 'unknown')} tokens)")
+        return content
+    except LLMClientError as e:
+        return f"[ERROR] {str(e)}"
+    except Exception as e:
+        return f"[ERROR] Failed to summarize chunk: {str(e)}"
 
 def iterative_summarize(text, chunk_size=CHUNK_SIZE):
     """
@@ -254,10 +246,8 @@ def analyze_jenkins_log(log_content):
             
         return result
         
-    except requests.excgreptions.Timeout as e:
-        return f"[AI ANALYSIS ERROR]: Request timeout - {str(e)}"
-    except requests.exceptions.ConnectionError as e:
-        return f"[AI ANALYSIS ERROR]: Connection error - {str(e)}"
+    except LLMClientError as e:
+        return f"[AI ANALYSIS ERROR]: {str(e)}"
     except Exception as e:
         return f"[AI ANALYSIS ERROR]: {str(e)}"
 
@@ -380,7 +370,7 @@ def process_jenkins_log(job_id, jenkins_url=None, username=None, password=None):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return redirect('http://localhost:3000')
 
 @app.route('/api/jobs', methods=['GET'])
 def get_jobs():
@@ -470,6 +460,133 @@ def analyze_log():
         print(f"Error analyzing job: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/analyze-log', methods=['POST'])
+def analyze_log_text():
+    """Analyze raw log text directly (drag-and-drop / paste)"""
+    try:
+        # Support both JSON body and multipart file upload
+        log_content = None
+        filename = "uploaded_log"
+
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            file = request.files.get('file')
+            if file:
+                log_content = file.read().decode('utf-8', errors='replace')
+                filename = file.filename or filename
+            else:
+                return jsonify({'success': False, 'error': 'No file provided'}), 400
+        else:
+            data = request.get_json(silent=True) or {}
+            log_content = data.get('log_text', '').strip()
+            filename = data.get('filename', filename)
+
+        if not log_content or len(log_content.strip()) < 50:
+            return jsonify({'success': False, 'error': 'Log content is too short or empty. Please provide a meaningful Jenkins log.'}), 400
+
+        print(f"[UPLOAD] Analyzing uploaded log: {filename} ({len(log_content)} chars)")
+
+        analysis_result = safe_ai_request_with_retry(log_content)
+
+        if analysis_result.startswith("[AI ANALYSIS ERROR]"):
+            return jsonify({'success': False, 'error': f"AI analysis failed: {analysis_result}"}), 500
+
+        return jsonify({
+            'success': True,
+            'response': analysis_result,
+            'job_name': filename,
+            'build_number': 'uploaded',
+        })
+
+    except Exception as e:
+        print(f"Error analyzing uploaded log: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/email-log-report', methods=['POST'])
+def email_log_report():
+    """Analyze uploaded log text and email the report"""
+    try:
+        data = request.get_json(silent=True) or {}
+        log_content = (data.get('log_text') or '').strip()
+        email = (data.get('email') or '').strip()
+        filename = data.get('filename', 'uploaded_log')
+
+        if not email:
+            return jsonify({'success': False, 'error': 'Email address is required'}), 400
+
+        if not log_content or len(log_content) < 50:
+            return jsonify({'success': False, 'error': 'Log content is too short or empty.'}), 400
+
+        print(f"[EMAIL-LOG] Analyzing and emailing log: {filename} ({len(log_content)} chars) to {email}")
+
+        analysis_result = safe_ai_request_with_retry(log_content)
+
+        if analysis_result.startswith("[AI ANALYSIS ERROR]"):
+            return jsonify({'success': False, 'error': f'AI analysis failed: {analysis_result}'}), 500
+
+        # Send email with analysis
+        analysis_data = {
+            'analysis': analysis_result,
+            'job_name': filename,
+        }
+        success = send_email_report(analysis_data, email, 'uploaded')
+
+        return jsonify({
+            'success': True,
+            'message': f'Analysis report emailed to {email}' if success else 'Analysis complete but email delivery may be delayed.',
+            'response': analysis_result,
+            'job_name': filename,
+            'build_number': 'uploaded',
+        })
+
+    except Exception as e:
+        print(f"Error in email-log-report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/chat/support', methods=['POST'])
+def support_chat():
+    try:
+        data = request.get_json(silent=True) or {}
+        message = (data.get('message') or '').strip()
+        context = data.get('context') or {}
+
+        if not message:
+            return jsonify({'success': False, 'error': 'Missing message'}), 400
+
+        if not llm_client.is_configured():
+            return jsonify({
+                'success': False,
+                'error': 'LLM not configured. For Ollama set LLM_PROVIDER=ollama, LLM_API_URL, and LLM_MODEL_NAME.'
+            }), 500
+
+        context_text = ""
+        if isinstance(context, dict) and context:
+            context_pairs = [f"{k}: {v}" for k, v in context.items()]
+            context_text = "\n\nContext:\n" + "\n".join(context_pairs)
+
+        user_prompt = f"User request:\n{message}{context_text}"
+
+        content, usage = llm_client.chat_completion(
+            messages=[
+                {'role': 'system', 'content': SUPPORT_CHAT_SYSTEM_PROMPT},
+                {'role': 'user', 'content': user_prompt}
+            ],
+            max_tokens=512,
+            temperature=0.2,
+            frequency_penalty=0,
+            presence_penalty=0.1,
+        )
+
+        return jsonify({
+            'success': True,
+            'response': content,
+            'usage': usage,
+        }), 200
+
+    except LLMClientError as e:
+        return jsonify({'success': False, 'error': str(e)}), 502
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/schedule-email/<job_id>', methods=['POST'])
 def schedule_or_send_email(job_id):
     try:
@@ -483,15 +600,40 @@ def schedule_or_send_email(job_id):
         # Get job details from database
         if not client:
             return jsonify({'error': 'Database connection not available. Make sure MongoDB is running'}), 500
-            
-        job = jobs_collection.find_one({'_id': ObjectId(job_id)})
-        if not job:
-            return jsonify({'error': 'Job not found'}), 404
+
+        job = None
+        try:
+            job = jobs_collection.find_one({'_id': ObjectId(job_id)})
+        except Exception:
+            pass  # job_id may not be a valid ObjectId
+
+        # Accept direct Jenkins credentials from request
+        jenkins_url = data.get('jenkins_url')
+        username = data.get('username')
+        password = data.get('password')
+        job_name = data.get('job_name', '')
+
+        if not job and all([jenkins_url, username, password, job_name]):
+            # Auto-register the job for future use
+            job_data = {
+                'name': job_name,
+                'url': jenkins_url,
+                'username': username,
+                'password': password,
+                'email': email,
+            }
+            result = jobs_collection.insert_one(job_data)
+            job_id = str(result.inserted_id)
+            job = job_data
+            job['_id'] = result.inserted_id
+            print(f"[SCHEDULE] Auto-registered new job: {job_name} (ID: {job_id})")
+        elif not job:
+            return jsonify({'error': 'Job not found. Please provide Jenkins URL, username, password, and job name to register it.'}), 404
 
         job_name = job.get('name')
-        jenkins_url = job.get('url')
-        username = job.get('username') 
-        password = job.get('password')
+        jenkins_url = jenkins_url or job.get('url')
+        username = username or job.get('username')
+        password = password or job.get('password')
 
         def generate_and_send_summary():
             """Generate latest Jenkins log analysis and send via email (simplified like app_simple.py)"""
@@ -622,6 +764,70 @@ def list_scheduled_emails():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/email-test', methods=['POST'])
+def email_test():
+    """Quick SMTP connectivity test — sends a tiny probe email."""
+    try:
+        data = request.get_json(silent=True) or {}
+        to_email = (data.get('email') or '').strip()
+        if not to_email:
+            return jsonify({'success': False, 'error': 'Provide "email" in JSON body'}), 400
+
+        smtp_server = os.getenv("SMTP_SERVER", "mxdns01.hpelabs.net")
+        smtp_port = int(os.getenv("SMTP_PORT", "0"))
+        smtp_username = os.getenv("SMTP_USERNAME")
+        smtp_password = os.getenv("SMTP_PASSWORD")
+        use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() in ("1", "true", "yes")
+        use_tls = os.getenv("SMTP_USE_TLS", "false").lower() in ("1", "true", "yes")
+
+        from email.mime.text import MIMEText
+        msg = MIMEText("This is a test email from Jenkins Log Analyzer.\nIf you received this, SMTP is working!", "plain")
+        msg["Subject"] = "Jenkins Log Analyzer — SMTP Test"
+        msg["From"] = "projects@hpelabs.net"
+        msg["To"] = to_email
+
+        ports_to_try = [smtp_port] if smtp_port else [25, 587, 465]
+        errors = []
+
+        for port in ports_to_try:
+            try:
+                import smtplib
+                if use_ssl or port == 465:
+                    smtp = smtplib.SMTP_SSL(smtp_server, port, timeout=15)
+                else:
+                    smtp = smtplib.SMTP(smtp_server, port, timeout=15)
+                smtp.ehlo()
+                if use_tls and port != 465:
+                    smtp.starttls()
+                    smtp.ehlo()
+                if smtp_username and smtp_password:
+                    smtp.login(smtp_username, smtp_password)
+                smtp.sendmail(msg["From"], [to_email], msg.as_string())
+                smtp.quit()
+                return jsonify({
+                    'success': True,
+                    'message': f'Test email sent to {to_email} via {smtp_server}:{port}'
+                }), 200
+            except Exception as e:
+                errors.append(f"{smtp_server}:{port} — {e}")
+
+        return jsonify({
+            'success': False,
+            'error': 'All SMTP attempts failed',
+            'details': errors,
+            'config': {
+                'SMTP_SERVER': smtp_server,
+                'SMTP_PORT': smtp_port or 'auto',
+                'SMTP_USE_TLS': use_tls,
+                'SMTP_USE_SSL': use_ssl,
+                'SMTP_USERNAME': smtp_username or '(none)',
+            }
+        }), 502
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/health')
 def health():

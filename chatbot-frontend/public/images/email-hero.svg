@@ -1,0 +1,31 @@
+<svg width="760" height="360" viewBox="0 0 760 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Email scheduling illustration">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="760" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECFDF5"/>
+      <stop offset="1" stop-color="#F8FAFC"/>
+    </linearGradient>
+    <linearGradient id="card2" x1="160" y1="60" x2="560" y2="290" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00B388"/>
+      <stop offset="1" stop-color="#0B0F10"/>
+    </linearGradient>
+  </defs>
+  <rect width="760" height="360" rx="24" fill="url(#bg2)"/>
+
+  <rect x="54" y="34" width="652" height="292" rx="18" fill="#FFFFFF"/>
+  <rect x="84" y="64" width="420" height="20" rx="10" fill="#E2F8F0"/>
+  <rect x="84" y="94" width="250" height="12" rx="6" fill="#DCF2E9"/>
+
+  <rect x="84" y="130" width="592" height="166" rx="12" fill="#F8FAFC"/>
+
+  <rect x="122" y="164" width="232" height="98" rx="12" fill="url(#card2)"/>
+  <rect x="146" y="194" width="184" height="8" rx="4" fill="#D1FAE5"/>
+  <rect x="146" y="212" width="140" height="8" rx="4" fill="#BBF7D0"/>
+
+  <rect x="390" y="164" width="246" height="98" rx="12" fill="#0B0F10"/>
+  <rect x="414" y="194" width="196" height="8" rx="4" fill="#A7F3D0"/>
+  <rect x="414" y="212" width="152" height="8" rx="4" fill="#6EE7B7"/>
+
+  <path d="M190 183L236 216L286 178" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="528" cy="204" r="22" fill="#10B981"/>
+  <path d="M518 204L526 212L540 196" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
