@@ -26,7 +26,11 @@ import { EmptyState } from "@/components/common/empty-state";
 import { FormLoadingSkeleton } from "@/components/common/form-loading-skeleton";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
 import { useJenkinsJobs } from "@/hooks/use-jenkins-jobs";
-import { analyzeJenkinsBuild, analyzeLogText } from "@/lib/api";
+import { analyzeJenkinsBuild, analyzeLogText, type ConfidenceMetrics } from "@/lib/api";
+import {
+  computeAndStoreBacktrackSimilarity,
+  type BacktrackSimilarity,
+} from "@/lib/result-history";
 
 /* ── Schemas ── */
 const analyzeSchema = z.object({
@@ -49,6 +53,8 @@ type AnalysisResult = {
   response: string;
   jobName?: string;
   buildNumber?: number | string;
+  confidence?: ConfidenceMetrics;
+  similarity?: BacktrackSimilarity;
 };
 
 type TabMode = "job" | "upload";
@@ -93,10 +99,17 @@ export function AnalyzeJenkinsForm() {
         username: values.username?.trim() || undefined,
         password: values.password?.trim() || undefined,
       });
+      const similarity = computeAndStoreBacktrackSimilarity({
+        response: data.response ?? "",
+        jobName: data.job_name,
+        buildNumber: data.build_number,
+      });
       setResult({
         response: data.response ?? "No analysis text returned.",
         jobName: data.job_name,
         buildNumber: data.build_number,
+        confidence: data.confidence,
+        similarity,
       });
       toast.success("Analysis completed successfully.");
       form.reset();
@@ -178,10 +191,17 @@ export function AnalyzeJenkinsForm() {
       }
 
       const data = await analyzeLogText(logContent, filename);
+      const similarity = computeAndStoreBacktrackSimilarity({
+        response: data.response ?? "",
+        jobName: data.job_name,
+        buildNumber: data.build_number,
+      });
       setResult({
         response: data.response ?? "No analysis text returned.",
         jobName: data.job_name,
         buildNumber: data.build_number,
+        confidence: data.confidence,
+        similarity,
       });
       toast.success("Log analysis completed successfully.");
       setUploadFile(null);
@@ -438,6 +458,8 @@ export function AnalyzeJenkinsForm() {
           response={result.response}
           jobName={result.jobName}
           buildNumber={result.buildNumber}
+          confidence={result.confidence}
+          similarity={result.similarity}
         />
       ) : null}
     </div>
