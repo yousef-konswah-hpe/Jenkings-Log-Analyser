@@ -49,9 +49,16 @@ export function SupportChatWidget() {
     setSending(true);
 
     try {
-      const response = await getSupportChatReply(userText, {
-        source: "support-widget",
-      });
+      // Build conversation history from previous messages (skip welcome)
+      const history = [...messages, userMsg]
+        .filter((m) => m.id !== "welcome")
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const response = await getSupportChatReply(
+        userText,
+        { source: "support-widget" },
+        history
+      );
 
       const reply: ChatMessage = {
         id: `a-${Date.now()}`,

@@ -1,5 +1,20 @@
+import { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+/** Turn **text** into <strong>text</strong>, leave the rest as plain text. */
+function renderBold(text: string): ReactNode[] {
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-bold">
+        {part}
+      </strong>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
 
 type AnalysisResultCardProps = {
   response: string;
@@ -24,7 +39,9 @@ export function AnalysisResultCard({
         </div>
       </CardHeader>
       <CardContent>
-        <p className="whitespace-pre-wrap text-sm leading-7 text-slate-800 dark:text-slate-100">{response}</p>
+        <div className="whitespace-pre-wrap text-sm leading-7 text-slate-800 dark:text-slate-100">
+          {renderBold(response)}
+        </div>
       </CardContent>
     </Card>
   );

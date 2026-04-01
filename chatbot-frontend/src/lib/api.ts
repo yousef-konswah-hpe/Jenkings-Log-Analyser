@@ -1,6 +1,20 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5005";
 
+/* ── Per-user identity (browser-local, no auth required) ── */
+
+const USER_ID_KEY = "jla-user-id";
+
+export function getUserId(): string {
+  if (typeof window === "undefined") return "server";
+  let id = localStorage.getItem(USER_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(USER_ID_KEY, id);
+  }
+  return id;
+}
+
 export type JenkinsJob = {
   id: string;
   display_name: string;
@@ -77,6 +91,7 @@ export async function analyzeJenkinsBuild(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
     },
     body: JSON.stringify(payload),
   });
@@ -142,6 +157,7 @@ export async function analyzeLogText(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
     },
     body: JSON.stringify({ log_text: logText, filename }),
   });
@@ -171,6 +187,7 @@ export async function emailLogReport(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
     },
     body: JSON.stringify({ log_text: logText, email, filename }),
   });
@@ -191,16 +208,107 @@ export async function emailLogReport(
   return { message: data.message || "Email report sent." };
 }
 
+/* ── Analysis History ── */
+
+export type AnalysisHistoryItem = {
+  id: string;
+  job_name: string;
+  build_number: string;
+  timestamp: string;
+  preview: string;
+};
+
+export type AnalysisDetail = AnalysisHistoryItem & {
+  analysis: string;
+  log_content?: string;
+};
+
+export async function getAnalysisHistory(): Promise<AnalysisHistoryItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/analyses`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
+    },
+    cache: "no-store",
+  });
+
+  const raw = await res.text();
+  let data: { success: boolean; analyses?: AnalysisHistoryItem[]; error?: string };
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw || "Invalid response from analyses API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to load analysis history.");
+  }
+
+  return data.analyses ?? [];
+}
+
+export async function getAnalysisById(id: string): Promise<AnalysisDetail> {
+  const res = await fetch(`${API_BASE_URL}/api/analyses/${id}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
+    },
+    cache: "no-store",
+  });
+
+  const raw = await res.text();
+  let data: { success: boolean; error?: string } & Partial<AnalysisDetail>;
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw || "Invalid response from analysis API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to load analysis.");
+  }
+
+  return data as AnalysisDetail;
+}
+
+export async function deleteAnalysis(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/analyses/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
+    },
+  });
+
+  const raw = await res.text();
+  let data: { success: boolean; error?: string };
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw || "Invalid response from delete API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to delete analysis.");
+  }
+}
+
 export async function getSupportChatReply(
   message: string,
-  context?: Record<string, string>
+  context?: Record<string, string>,
+  history?: { role: string; content: string }[]
 ): Promise<string> {
   const res = await fetch(`${API_BASE_URL}/api/chat/support`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ message, context }),
+    body: JSON.stringify({ message, context, history }),
   });
 
   const raw = await res.text();

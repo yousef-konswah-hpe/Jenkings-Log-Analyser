@@ -1,6 +1,7 @@
 import { SectionCard } from "@/components/common/section-card";
 import { AnalyzeJenkinsForm } from "@/components/forms/analyze-jenkins-form";
 import { ScheduleEmailForm } from "@/components/forms/schedule-email-form";
+import { AnalysisHistoryPanel } from "@/components/common/analysis-history-panel";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +29,15 @@ export default function Home() {
           description="Email analysis reports from a Jenkins job or an uploaded log file."
         >
           <ScheduleEmailForm />
+        </SectionCard>
+
+        <Separator />
+
+        <SectionCard
+          title="Analysis History"
+          description="View and revisit your previous analysis results."
+        >
+          <AnalysisHistoryPanel />
         </SectionCard>
       </div>
     </AppShell>
