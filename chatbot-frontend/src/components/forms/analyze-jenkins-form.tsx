@@ -34,7 +34,13 @@ const analyzeSchema = z.object({
 });
 
 type AnalyzeFormValues = z.infer<typeof analyzeSchema>;
-type AnalysisResult = { response: string; jobName?: string; buildNumber?: number | string };
+type AnalysisResult = {
+  response: string;
+  jobName?: string;
+  buildNumber?: number | string;
+  confidence?: ConfidenceMetrics;
+  similarity?: BacktrackSimilarity;
+};
 type TabMode = "job" | "upload";
 
 export function AnalyzeJenkinsForm() {
@@ -68,7 +74,9 @@ export function AnalyzeJenkinsForm() {
         username: values.username?.trim() || undefined,
         password: values.password?.trim() || undefined,
       });
-      setResult({ response: data.response ?? "No analysis text returned.", jobName: data.job_name, buildNumber: data.build_number });
+      const response = data.response ?? "No analysis text returned.";
+      const similarity = computeAndStoreBacktrackSimilarity({ response, jobName: data.job_name, buildNumber: data.build_number });
+      setResult({ response, jobName: data.job_name, buildNumber: data.build_number, confidence: data.confidence, similarity });
       toast.success("Analysis completed successfully.");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unexpected error.";
@@ -87,7 +95,9 @@ export function AnalyzeJenkinsForm() {
       if (logContent.length < 50) { toast.error("Log content too short."); return; }
 
       const data = await analyzeLogText(logContent, filename);
-      setResult({ response: data.response ?? "No analysis text returned.", jobName: data.job_name, buildNumber: data.build_number });
+      const response = data.response ?? "No analysis text returned.";
+      const similarity = computeAndStoreBacktrackSimilarity({ response, jobName: data.job_name, buildNumber: data.build_number });
+      setResult({ response, jobName: data.job_name, buildNumber: data.build_number, confidence: data.confidence, similarity });
       toast.success("Log analysis completed successfully.");
       setUploadFile(null); setPasteText("");
     } catch (error) {
@@ -199,7 +209,7 @@ export function AnalyzeJenkinsForm() {
       )}
 
       {result && (
-        <AnalysisResultCard response={result.response} jobName={result.jobName} buildNumber={result.buildNumber} />
+        <AnalysisResultCard response={result.response} jobName={result.jobName} buildNumber={result.buildNumber} confidence={result.confidence} similarity={result.similarity} />
       )}
     </div>
   );

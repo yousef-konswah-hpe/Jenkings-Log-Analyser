@@ -21,7 +21,7 @@ from config import (
     client, jobs_collection, analyses_collection,
     llm_client, FREQUENCY_MAP,
 )  # must be first (sets sys.path)
-from analysis import safe_analyze_with_retry
+from analysis import safe_analyze_with_retry, compute_confidence
 from prompts import SUPPORT_CHAT_PROMPT
 from services import process_jenkins_log, send_email_report, save_analysis
 
@@ -127,9 +127,11 @@ def analyze_log():
         _update_latest(result["analysis"], result["job_name"], result["build_number"])
         save_analysis(result["job_name"], result["build_number"], result["analysis"], result.get("log_text", ""), _user_id())
 
+        confidence = compute_confidence(result["analysis"], result.get("log_text", ""))
         return jsonify({
             "success": True, "response": result["analysis"],
             "job_name": result["job_name"], "build_number": result["build_number"],
+            "confidence": confidence,
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -163,9 +165,11 @@ def analyze_log_text():
         _update_latest(analysis, filename, "uploaded")
         save_analysis(filename, "uploaded", analysis, log_content, _user_id())
 
+        confidence = compute_confidence(analysis, log_content)
         return jsonify({
             "success": True, "response": analysis,
             "job_name": filename, "build_number": "uploaded",
+            "confidence": confidence,
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500

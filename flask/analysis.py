@@ -1,6 +1,7 @@
 """AI analysis pipeline: log condensing, parallel tool execution, report compilation."""
 
 import random
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -193,3 +194,98 @@ def safe_analyze_with_retry(log_content: str, max_retries: int = 3) -> str:
             print(f"[AI] Attempt {attempt} error: {exc}")
 
     return f"[AI ANALYSIS ERROR]: Failed after {max_retries} attempts"
+
+
+# ── Confidence scoring ──
+
+_EXPECTED_SECTIONS = [
+    "summary", "errors", "failures", "build stages",
+    "environment", "patterns", "root cause", "fix suggestions",
+]
+
+def compute_confidence(report: str, log_content: str) -> dict:
+    """Score the analysis report quality on a 0-100 scale."""
+    lower = report.lower()
+    log_lower = log_content.lower()
+
+    # 1. Evidence coverage — how many expected sections are present (0-30)
+    found = sum(1 for s in _EXPECTED_SECTIONS if s in lower)
+    evidence_coverage = round(found / len(_EXPECTED_SECTIONS) * 100)
+    evidence_score = round(found / len(_EXPECTED_SECTIONS) * 30)
+
+    # 2. Specificity — mentions of concrete details (0-25)
+    specifics = 0
+    if re.search(r"line \d+|\.py|\.java|\.js|\.ts|\.sh", lower):
+        specifics += 1
+    if re.search(r"error|exception|traceback|failed", lower):
+        specifics += 1
+    if re.search(r"step \d|stage|pipeline", lower):
+        specifics += 1
+    if re.search(r"fix|resolve|solution|install|update|change", lower):
+        specifics += 1
+    if re.search(r"npm|pip|maven|gradle|docker|git", lower):
+        specifics += 1
+    specificity = round(specifics / 5 * 100)
+    specificity_score = round(specifics / 5 * 25)
+
+    # 3. Structure — proper markdown sections with headers (0-25)
+    headers = len(re.findall(r"\*\*[^*]+\*\*|\#{1,3}\s", report))
+    bullets = len(re.findall(r"^[\s]*[-•\d]+[.)]\s", report, re.MULTILINE))
+    structure_items = min(headers + bullets, 15)
+    structure = round(structure_items / 15 * 100)
+    structure_score = round(structure_items / 15 * 25)
+
+    # 4. Certainty — hedging language reduces score (0-20)
+    hedges = len(re.findall(r"\bmight|may|possibly|unclear|could be|perhaps|unsure\b", lower))
+    nones = len(re.findall(r"none found", lower))
+    certainty_raw = max(0, 20 - hedges * 3 - nones * 2)
+    certainty = round(min(certainty_raw / 20, 1) * 100)
+    certainty_score = min(certainty_raw, 20)
+
+    total = evidence_score + specificity_score + structure_score + certainty_score
+    total = max(0, min(100, total))
+
+    label = "high" if total >= 70 else "medium" if total >= 40 else "low"
+
+    # Build readable details
+    positive_signals = []
+    risk_signals = []
+    missing = []
+
+    if found >= 6:
+        positive_signals.append(f"{found}/{len(_EXPECTED_SECTIONS)} expected report sections present")
+    else:
+        risk_signals.append(f"Only {found}/{len(_EXPECTED_SECTIONS)} expected sections found")
+    if specifics >= 3:
+        positive_signals.append("Report references specific files, errors, or tools")
+    else:
+        risk_signals.append("Report lacks specific file names, line numbers, or tool references")
+    if headers >= 4:
+        positive_signals.append("Report is well-structured with clear headings")
+    if hedges > 2:
+        risk_signals.append(f"Report uses hedging language ({hedges} instances)")
+    if nones > 2:
+        missing.append("Multiple sections report 'None found' — log may lack detail")
+    if evidence_coverage < 80:
+        missing.append("Some expected sections are absent from the report")
+    if specificity < 60:
+        missing.append("More specific references (file paths, line numbers) would increase confidence")
+
+    overview = f"Analysis scored {total}% confidence based on report completeness, specificity, structure, and certainty."
+
+    return {
+        "score": total,
+        "label": label,
+        "overview": overview,
+        "details": [overview],
+        "positive_signals": positive_signals,
+        "risk_signals": risk_signals,
+        "missing_for_full_confidence": missing,
+        "quality_dimensions": {
+            "evidence_coverage": evidence_coverage,
+            "specificity": specificity,
+            "structure": structure,
+            "certainty": certainty,
+        },
+    }
+
