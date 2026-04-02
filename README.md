@@ -62,6 +62,8 @@
 |  **Dark Mode** | Full dark/light theme toggle with persistent preference |
 |  **Support Chat** | Built-in AI chat widget for troubleshooting help |
 |  **Chunked Processing** | Handles large log files by splitting them into manageable chunks |
+|  **Confidence Metrics** | Shows a confidence % for each analysis with click-to-open detailed breakdown |
+|  **Backtrack Similarity** | Compares the current result with the last 1-3 session results and shows similarity % |
 
 ---
 
@@ -243,6 +245,28 @@ Navigate to **http://localhost:3000** in your browser.
 | `POST` | `/schedule-email/<id>` | Trigger or schedule email for a job |
 | `POST` | `/api/chat/support` | AI support chat endpoint |
 | `POST` | `/api/email-test` | SMTP connectivity test |
+
+---
+
+## Result Intelligence Metrics
+
+The analysis result card includes two interactive metrics:
+
+1. **Confidence %**
+  - Click the badge to open a breakdown.
+  - Includes quality dimensions (evidence coverage, specificity, structure, certainty), positive/risk signals, and **"Why this is not 100%"** when applicable.
+  - This value is a transparent heuristic from backend analysis signals.
+
+2. **Backtrack %**
+  - Click the badge to open a comparison breakdown.
+  - Compares the latest output with the previous 1-3 outputs in the same browser session.
+  - Highlights exact 100% matches, top shared terms, and synonym-level matches so users can quickly spot repeated vs new findings.
+
+### Developer Notes
+
+- Confidence metric logic: `flask/app.py` (`build_confidence_metrics`)
+- Backtrack session comparison logic: `chatbot-frontend/src/lib/result-history.ts`
+- Metric UI rendering: `chatbot-frontend/src/components/common/analysis-result-card.tsx`
 
 ---
 

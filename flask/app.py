@@ -13,6 +13,7 @@ Provides REST endpoints consumed by the Next.js frontend for:
 # stdlib
 import os
 import random
+import re
 import smtplib
 import sys
 import threading
@@ -296,6 +297,133 @@ def safe_ai_request_with_retry(log_content: str, max_retries: int = 3) -> str:
     return f"[AI ANALYSIS ERROR]: Failed after {max_retries} attempts"
 
 
+def _clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(max_value, value))
+
+
+def build_confidence_metrics(analysis_text: str, source_log: str | None = None) -> dict:
+    """
+    Build an explainable confidence heuristic for an LLM summary.
+
+    This is not model probability; it is a rule-based quality signal intended
+    for user-facing guidance.
+    """
+    text = analysis_text or ""
+    lower_text = text.lower()
+
+    failed_tests = len(set(re.findall(r"\btest_[\w\[\]-]+", text)))
+    file_refs = len(re.findall(r"\b[\w\-/]+\.(py|js|ts|tsx|java|go|rb|cs)\b", lower_text))
+    error_markers = len(re.findall(r"\b(traceback|exception|error|timeout|assertion|failed)\b", lower_text))
+    structured_lines = len(re.findall(r"(?m)^\s*(\d+\.|[-*]|\*\*.+\*\*)", text))
+    uncertainty_markers = len(re.findall(r"\b(maybe|might|possibly|unclear|probably|guess|could be)\b", lower_text))
+    hard_error_markers = len(re.findall(r"\[(error|ai analysis error)\]|failed to summarize|not configured", lower_text))
+    selector_mentions = len(re.findall(r"\b(selector|locator|xpath|css)\b", lower_text))
+    traceback_mentions = len(re.findall(r"\b(traceback|stack trace)\b", lower_text))
+
+    evidence_coverage = int(round(_clamp(
+        failed_tests * 20 + file_refs * 12 + error_markers * 5,
+        0,
+        100,
+    )))
+    specificity = int(round(_clamp(
+        file_refs * 18 + selector_mentions * 12 + traceback_mentions * 10,
+        0,
+        100,
+    )))
+    structure = int(round(_clamp(structured_lines * 15, 0, 100)))
+    certainty = int(round(_clamp(100 - (uncertainty_markers * 18 + hard_error_markers * 40), 0, 100)))
+
+    score = (
+        evidence_coverage * 0.38
+        + specificity * 0.24
+        + structure * 0.18
+        + certainty * 0.20
+    )
+
+    if len(text.strip()) < 300:
+        score -= 8
+    if source_log and len(source_log) > 100_000:
+        # Very large logs are harder to summarize completely in one pass.
+        score -= 4
+
+    score = int(round(_clamp(score, 5, 100)))
+
+    if score >= 80:
+        label = "high"
+    elif score >= 60:
+        label = "medium"
+    else:
+        label = "low"
+
+    positive_signals = []
+    if failed_tests:
+        positive_signals.append(f"Identified explicit failed tests ({failed_tests})")
+    if file_refs:
+        positive_signals.append(f"Includes concrete file/code references ({file_refs})")
+    if error_markers:
+        positive_signals.append(f"Captures runtime error/timeout signals ({error_markers})")
+    if structured_lines >= 3:
+        positive_signals.append("Output is structured for readability")
+
+    risk_signals = []
+    if uncertainty_markers:
+        risk_signals.append(f"Contains uncertain language markers ({uncertainty_markers})")
+    if hard_error_markers:
+        risk_signals.append("Contains model/runtime error markers")
+    if len(text.strip()) < 300:
+        risk_signals.append("Summary is short, so coverage may be incomplete")
+    if source_log and len(source_log) > 100_000:
+        risk_signals.append("Source log is very large and likely compressed during summarization")
+
+    missing_for_full_confidence = []
+    if failed_tests < 2:
+        missing_for_full_confidence.append("More explicit failed test case extraction")
+    if file_refs < 2:
+        missing_for_full_confidence.append("More file/function references tied to failures")
+    if selector_mentions < 1:
+        missing_for_full_confidence.append("Clear selector/locator mapping where relevant")
+    if traceback_mentions < 1:
+        missing_for_full_confidence.append("Direct traceback/stack-trace pinpointing")
+    if uncertainty_markers > 0:
+        missing_for_full_confidence.append("Less uncertain wording and more definitive statements")
+    if structured_lines < 4:
+        missing_for_full_confidence.append("More structured grouping (headings, numbered findings)")
+
+    if not missing_for_full_confidence:
+        missing_for_full_confidence.append(
+            "No major missing factors detected by heuristics; remaining gap reflects uncertainty in source logs and model limits"
+        )
+
+    details = [
+        f"Detected {failed_tests} explicit failed-test references",
+        f"Detected {error_markers} error/traceback markers",
+        f"Detected {file_refs} code/file references",
+    ]
+    if uncertainty_markers:
+        details.append(f"Includes {uncertainty_markers} uncertainty markers")
+    if hard_error_markers:
+        details.append("Contains explicit model/runtime error markers")
+
+    return {
+        "score": score,
+        "label": label,
+        "overview": (
+            "Heuristic confidence based on structure, concrete references, and "
+            "error-signal density. This is not a model-native probability."
+        ),
+        "details": details,
+        "positive_signals": positive_signals,
+        "risk_signals": risk_signals,
+        "missing_for_full_confidence": missing_for_full_confidence,
+        "quality_dimensions": {
+            "evidence_coverage": evidence_coverage,
+            "specificity": specificity,
+            "structure": structure,
+            "certainty": certainty,
+        },
+    }
+
+
 # Email helper
 
 def send_email_report(analysis_data: dict, email_address, job_id) -> bool:
@@ -483,11 +611,13 @@ def analyze_log():
             return jsonify({"success": False, "error": error}), 400
 
         print("Analysis completed successfully")
+        confidence = build_confidence_metrics(result["analysis"])
         return jsonify({
             "success": True,
             "response": result["analysis"],
             "job_name": result["job_name"],
             "build_number": result["build_number"],
+            "confidence": confidence,
         })
 
     except Exception as exc:
@@ -522,11 +652,14 @@ def analyze_log_text():
         if analysis.startswith("[AI ANALYSIS ERROR]"):
             return jsonify({"success": False, "error": f"AI analysis failed: {analysis}"}), 500
 
+        confidence = build_confidence_metrics(analysis, source_log=log_content)
+
         return jsonify({
             "success": True,
             "response": analysis,
             "job_name": filename,
             "build_number": "uploaded",
+            "confidence": confidence,
         })
 
     except Exception as exc:
@@ -557,6 +690,7 @@ def email_log_report():
             return jsonify({"success": False, "error": f"AI analysis failed: {analysis}"}), 500
 
         success = send_email_report({"analysis": analysis, "job_name": filename}, email, "uploaded")
+        confidence = build_confidence_metrics(analysis, source_log=log_content)
 
         return jsonify({
             "success": True,
@@ -564,6 +698,7 @@ def email_log_report():
             "response": analysis,
             "job_name": filename,
             "build_number": "uploaded",
+            "confidence": confidence,
         })
 
     except Exception as exc:
