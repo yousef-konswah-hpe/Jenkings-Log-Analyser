@@ -19,7 +19,11 @@ import { FormLoadingSkeleton } from "@/components/common/form-loading-skeleton";
 import { LogUploadArea } from "@/components/common/log-upload-area";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
 import { useJenkinsJobs } from "@/hooks/use-jenkins-jobs";
-import { analyzeJenkinsBuild, analyzeLogText } from "@/lib/api";
+import { analyzeJenkinsBuild, analyzeLogText, type ConfidenceMetrics } from "@/lib/api";
+import {
+  computeAndStoreBacktrackSimilarity,
+  type BacktrackSimilarity,
+} from "@/lib/result-history";
 
 const analyzeSchema = z.object({
   jobId: z.string().min(1, "Please select a Jenkins job."),

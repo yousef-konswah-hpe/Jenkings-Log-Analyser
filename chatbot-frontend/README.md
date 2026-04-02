@@ -83,3 +83,33 @@ npm run dev
 - Schedule Email Report (validated form + immediate/scheduled send)
 - Reusable loading/empty states + toast notifications
 - Dark mode + professional HPE-themed layout
+- Confidence % metric with click-to-open speech-bubble breakdown
+- Backtrack similarity % across the last 1-3 session results
+
+## Result Metrics UX
+
+### Confidence %
+
+- Displayed on the analysis result card after a successful analysis.
+- Click the badge to open a detailed breakdown bubble.
+- Breakdown includes:
+	- Quality dimensions (evidence coverage, specificity, structure, certainty)
+	- Positive signals and risk signals
+	- "Why this is not 100%" list (when score is below 100)
+
+### Backtrack %
+
+- Displayed on the analysis result card after there is at least one previous result in the same browser session.
+- Click the badge to open a detailed comparison bubble.
+- Breakdown includes:
+	- 100% exact result matches
+	- Top exact shared terms
+	- Synonymous match groups
+	- Per-result comparison percentages against recent history
+
+## Developer Notes (Metrics)
+
+- API metric type: `src/lib/api.ts` (`ConfidenceMetrics`)
+- Session comparison engine: `src/lib/result-history.ts`
+- Metric badge + speech-bubble UI: `src/components/common/analysis-result-card.tsx`
+- Analyze flow wiring: `src/components/forms/analyze-jenkins-form.tsx`

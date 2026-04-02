@@ -34,11 +34,28 @@ export type AnalyzeApiRequest = {
   password?: string;
 };
 
+export type ConfidenceMetrics = {
+  score: number;
+  label: "low" | "medium" | "high";
+  overview: string;
+  details: string[];
+  positive_signals?: string[];
+  risk_signals?: string[];
+  missing_for_full_confidence?: string[];
+  quality_dimensions?: {
+    evidence_coverage: number;
+    specificity: number;
+    structure: number;
+    certainty: number;
+  };
+};
+
 export type AnalyzeApiResponse = {
   success: boolean;
   response?: string;
   job_name?: string;
   build_number?: number | string;
+  confidence?: ConfidenceMetrics;
   error?: string;
 };
 
