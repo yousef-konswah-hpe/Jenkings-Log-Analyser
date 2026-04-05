@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, MessageCircleQuestion, Send, X } from "lucide-react";
-import { getSupportChatReply } from "@/lib/api";
+import { Bot, MessageCircleQuestion, Send, X, Wrench } from "lucide-react";
+import { getSupportChatReply, type ToolUsed } from "@/lib/api";
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  toolsUsed?: ToolUsed[];
 };
 
 export function SupportChatWidget() {
@@ -63,7 +64,8 @@ export function SupportChatWidget() {
       const reply: ChatMessage = {
         id: `a-${Date.now()}`,
         role: "assistant",
-        content: response,
+        content: response.response,
+        toolsUsed: response.tools_used,
       };
 
       setMessages((prev) => [...prev, reply]);
@@ -102,14 +104,29 @@ export function SupportChatWidget() {
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3 dark:bg-slate-950">
             {messages.map((m) => (
-              <div
-                key={m.id}
-                className={
-                  m.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-xl bg-hpe-green-500 px-3 py-2 text-sm text-white"
-                    : "max-w-[85%] rounded-xl bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-                }
-              >
+              <div key={m.id}>
+                {/* Tool usage indicator */}
+                {m.role === "assistant" && m.toolsUsed && m.toolsUsed.length > 0 ? (
+                  <div className="mb-1 max-w-[85%] rounded-lg bg-purple-50 px-2.5 py-1.5 text-[11px] text-purple-700 dark:bg-purple-950/30 dark:text-purple-300">
+                    <div className="flex items-center gap-1 font-medium">
+                      <Wrench className="h-3 w-3" />
+                      Used {m.toolsUsed.length} tool{m.toolsUsed.length > 1 ? "s" : ""}:
+                    </div>
+                    {m.toolsUsed.map((tool, i) => (
+                      <div key={i} className="ml-4 mt-0.5">
+                        • {tool.tool.replace(/_/g, " ")}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div
+                  className={
+                    m.role === "user"
+                      ? "ml-auto max-w-[85%] rounded-xl bg-hpe-green-500 px-3 py-2 text-sm text-white"
+                      : "max-w-[85%] rounded-xl bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100"
+                  }
+                >
                 {m.role === "assistant" ? (
                   <div className="space-y-1.5 [&>p]:leading-relaxed">
                     {m.content.split("\n").filter(Boolean).map((line, i) => {
@@ -139,6 +156,7 @@ export function SupportChatWidget() {
                 ) : (
                   m.content
                 )}
+              </div>
               </div>
             ))}
             {sending ? (

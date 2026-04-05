@@ -19,7 +19,7 @@ import { FormLoadingSkeleton } from "@/components/common/form-loading-skeleton";
 import { LogUploadArea } from "@/components/common/log-upload-area";
 import { RHFSelectField, RHFTextField } from "@/components/forms/form-fields";
 import { useJenkinsJobs } from "@/hooks/use-jenkins-jobs";
-import { analyzeJenkinsBuild, analyzeLogText, type ConfidenceMetrics } from "@/lib/api";
+import { analyzeJenkinsBuild, analyzeLogText, type ConfidenceMetrics, type SimilarAnalysis, type ReActTraceEntry } from "@/lib/api";
 import {
   computeAndStoreBacktrackSimilarity,
   type BacktrackSimilarity,
@@ -40,6 +40,8 @@ type AnalysisResult = {
   buildNumber?: number | string;
   confidence?: ConfidenceMetrics;
   similarity?: BacktrackSimilarity;
+  similarAnalyses?: SimilarAnalysis[];
+  reactTrace?: ReActTraceEntry[];
 };
 type TabMode = "job" | "upload";
 
@@ -76,7 +78,11 @@ export function AnalyzeJenkinsForm() {
       });
       const response = data.response ?? "No analysis text returned.";
       const similarity = computeAndStoreBacktrackSimilarity({ response, jobName: data.job_name, buildNumber: data.build_number });
-      setResult({ response, jobName: data.job_name, buildNumber: data.build_number, confidence: data.confidence, similarity });
+      setResult({
+        response, jobName: data.job_name, buildNumber: data.build_number,
+        confidence: data.confidence, similarity,
+        similarAnalyses: data.similar_analyses, reactTrace: data.react_trace,
+      });
       toast.success("Analysis completed successfully.");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unexpected error.";
@@ -97,7 +103,11 @@ export function AnalyzeJenkinsForm() {
       const data = await analyzeLogText(logContent, filename);
       const response = data.response ?? "No analysis text returned.";
       const similarity = computeAndStoreBacktrackSimilarity({ response, jobName: data.job_name, buildNumber: data.build_number });
-      setResult({ response, jobName: data.job_name, buildNumber: data.build_number, confidence: data.confidence, similarity });
+      setResult({
+        response, jobName: data.job_name, buildNumber: data.build_number,
+        confidence: data.confidence, similarity,
+        similarAnalyses: data.similar_analyses, reactTrace: data.react_trace,
+      });
       toast.success("Log analysis completed successfully.");
       setUploadFile(null); setPasteText("");
     } catch (error) {
@@ -209,7 +219,15 @@ export function AnalyzeJenkinsForm() {
       )}
 
       {result && (
-        <AnalysisResultCard response={result.response} jobName={result.jobName} buildNumber={result.buildNumber} confidence={result.confidence} similarity={result.similarity} />
+        <AnalysisResultCard
+          response={result.response}
+          jobName={result.jobName}
+          buildNumber={result.buildNumber}
+          confidence={result.confidence}
+          similarity={result.similarity}
+          similarAnalyses={result.similarAnalyses}
+          reactTrace={result.reactTrace}
+        />
       )}
     </div>
   );

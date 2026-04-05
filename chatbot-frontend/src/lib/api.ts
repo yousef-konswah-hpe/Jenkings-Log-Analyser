@@ -50,12 +50,35 @@ export type ConfidenceMetrics = {
   };
 };
 
+export type SimilarAnalysis = {
+  analysis_id: string;
+  job_name: string;
+  similarity: number;
+  summary_text: string;
+};
+
+export type ReActTraceEntry = {
+  iteration: number;
+  confidence_score: number;
+  action: string;
+  details: string;
+  feedback?: string;
+};
+
+export type ToolUsed = {
+  tool: string;
+  params: Record<string, string>;
+  result_preview: string;
+};
+
 export type AnalyzeApiResponse = {
   success: boolean;
   response?: string;
   job_name?: string;
   build_number?: number | string;
   confidence?: ConfidenceMetrics;
+  similar_analyses?: SimilarAnalysis[];
+  react_trace?: ReActTraceEntry[];
   error?: string;
 };
 
@@ -73,6 +96,7 @@ type ScheduleEmailResponse = {
 type SupportChatResponse = {
   success: boolean;
   response?: string;
+  tools_used?: ToolUsed[];
   error?: string;
 };
 
@@ -319,7 +343,7 @@ export async function getSupportChatReply(
   message: string,
   context?: Record<string, string>,
   history?: { role: string; content: string }[]
-): Promise<string> {
+): Promise<{ response: string; tools_used: ToolUsed[] }> {
   const res = await fetch(`${API_BASE_URL}/api/chat/support`, {
     method: "POST",
     headers: {
@@ -341,5 +365,41 @@ export async function getSupportChatReply(
     throw new Error(data.error || "Failed to get support chat response.");
   }
 
-  return data.response || "No response from assistant.";
+  return {
+    response: data.response || "No response from assistant.",
+    tools_used: data.tools_used || [],
+  };
+}
+
+/* ── Feedback ── */
+
+export async function submitFeedback(payload: {
+  analysis_id: string;
+  rating: "positive" | "negative";
+  correction?: string;
+  job_name?: string;
+}): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/feedback`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Id": getUserId(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await res.text();
+  let data: { success?: boolean; message?: string; error?: string };
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw || "Invalid response from feedback API.");
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to submit feedback.");
+  }
+
+  return { message: data.message || "Feedback recorded." };
 }
