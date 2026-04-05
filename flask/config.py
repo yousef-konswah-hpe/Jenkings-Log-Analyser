@@ -66,6 +66,15 @@ def _connect_mongo() -> tuple:
 
 client, db, jobs_collection = _connect_mongo()
 analyses_collection = db["analyses"]
+feedback_collection = db["feedback"]
+embeddings_collection = db["embeddings"]
+
+# Ensure vector-search index exists for RAG
+try:
+    embeddings_collection.create_index("analysis_id", unique=True, sparse=True)
+    embeddings_collection.create_index("job_name")
+except Exception:
+    pass
 
 # LLM Client
 
@@ -107,3 +116,13 @@ FREQUENCY_MAP = {
     "monthly": "0 9 1 * *",
     "hourly": "0 * * * *",
 }
+
+# RAG settings
+RAG_TOP_K = 3                          # number of similar analyses to retrieve
+RAG_SIMILARITY_THRESHOLD = 0.65        # minimum cosine similarity
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# ReAct settings
+REACT_MAX_ITERATIONS = 3               # max self-correction loops
+REACT_CONFIDENCE_THRESHOLD = 55        # re-evaluate if below this

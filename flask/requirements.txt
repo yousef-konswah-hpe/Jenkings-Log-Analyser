@@ -7,3 +7,4 @@ pymongo
 python-dotenv
 APScheduler
 beautifulsoup4
+numpy
