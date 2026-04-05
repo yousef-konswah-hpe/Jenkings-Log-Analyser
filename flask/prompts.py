@@ -51,6 +51,8 @@ ANALYSIS_TOOLS = {
 COMPILE_PROMPT = (
     "You are a Jenkins CI/CD expert. Based on the following analysis results "
     "from a Jenkins build log, produce a single well-structured report.\n\n"
+    "{rag_context}"
+    "{feedback_context}"
     "Your report MUST include these sections in order:\n"
     "1. **Summary** — One-paragraph overview of the build status and key findings\n"
     "2. **Errors & Failures** — All errors and test failures with details\n"
@@ -64,7 +66,8 @@ COMPILE_PROMPT = (
     "- Remove duplicate information across sections\n"
     "- Every error MUST have a corresponding fix suggestion\n"
     "- Keep the report concise but complete\n"
-    "- If a section has no findings, write 'None found' instead of omitting it\n\n"
+    "- If a section has no findings, write 'None found' instead of omitting it\n"
+    "- If similar past failures are provided above, reference them and note if this is a recurring issue\n\n"
     "Analysis results:\n\n{tool_results}"
 )
 

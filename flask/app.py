@@ -18,12 +18,13 @@ from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 
 from config import (
-    client, jobs_collection, analyses_collection,
+    client, jobs_collection, analyses_collection, feedback_collection,
     llm_client, FREQUENCY_MAP,
 )  # must be first (sets sys.path)
 from analysis import safe_analyze_with_retry, compute_confidence
-from prompts import SUPPORT_CHAT_PROMPT
 from services import process_jenkins_log, send_email_report, save_analysis
+from agent_chat import agentic_chat
+from rag import find_similar_analyses
 
 # App & scheduler
 
@@ -39,16 +40,18 @@ _latest_analysis: dict = {
     "job_name": None,
     "build_number": None,
     "timestamp": None,
+    "log_content": None,
 }
 
 
-def _update_latest(analysis: str, job_name: str, build_number):
+def _update_latest(analysis: str, job_name: str, build_number, log_content: str = ""):
     """Update the latest analysis context for the chatbot."""
     _latest_analysis.update({
         "result": analysis,
         "job_name": job_name,
         "build_number": build_number,
         "timestamp": datetime.now().isoformat(),
+        "log_content": log_content,
     })
 
 
@@ -124,7 +127,7 @@ def analyze_log():
         if error:
             return jsonify({"success": False, "error": error}), 400
 
-        _update_latest(result["analysis"], result["job_name"], result["build_number"])
+        _update_latest(result["analysis"], result["job_name"], result["build_number"], result.get("log_text", ""))
         save_analysis(result["job_name"], result["build_number"], result["analysis"], result.get("log_text", ""), _user_id())
 
         confidence = compute_confidence(result["analysis"], result.get("log_text", ""))
@@ -132,6 +135,8 @@ def analyze_log():
             "success": True, "response": result["analysis"],
             "job_name": result["job_name"], "build_number": result["build_number"],
             "confidence": confidence,
+            "similar_analyses": result.get("similar_analyses", []),
+            "react_trace": result.get("react_trace", []),
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -158,11 +163,12 @@ def analyze_log_text():
         if not log_content or len(log_content.strip()) < 50:
             return jsonify({"success": False, "error": "Log content is too short or empty."}), 400
 
-        analysis = safe_analyze_with_retry(log_content)
+        result = safe_analyze_with_retry(log_content, job_name=filename)
+        analysis = result.get("report", "")
         if analysis.startswith("[AI ANALYSIS ERROR]"):
             return jsonify({"success": False, "error": f"AI analysis failed: {analysis}"}), 500
 
-        _update_latest(analysis, filename, "uploaded")
+        _update_latest(analysis, filename, "uploaded", log_content)
         save_analysis(filename, "uploaded", analysis, log_content, _user_id())
 
         confidence = compute_confidence(analysis, log_content)
@@ -170,6 +176,8 @@ def analyze_log_text():
             "success": True, "response": analysis,
             "job_name": filename, "build_number": "uploaded",
             "confidence": confidence,
+            "similar_analyses": result.get("similar_analyses", []),
+            "react_trace": result.get("react_trace", []),
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -191,11 +199,12 @@ def email_log_report():
         if not log_content or len(log_content) < 50:
             return jsonify({"success": False, "error": "Log content is too short or empty."}), 400
 
-        analysis = safe_analyze_with_retry(log_content)
+        analysis_result = safe_analyze_with_retry(log_content, job_name=filename)
+        analysis = analysis_result.get("report", "")
         if analysis.startswith(("[AI ANALYSIS ERROR]", "[ERROR]")):
             return jsonify({"success": False, "error": f"AI analysis failed: {analysis}"}), 500
 
-        _update_latest(analysis, filename, "uploaded")
+        _update_latest(analysis, filename, "uploaded", log_content)
         save_analysis(filename, "uploaded", analysis, log_content, _user_id())
         success = send_email_report({"analysis": analysis, "job_name": filename}, email, "uploaded")
 
@@ -208,7 +217,7 @@ def email_log_report():
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
-# Support chatbot
+# Support chatbot (agentic with tool use)
 
 @app.route("/api/chat/support", methods=["POST"])
 def support_chat():
@@ -223,33 +232,18 @@ def support_chat():
         if not llm_client.is_configured():
             return jsonify({"success": False, "error": "LLM not configured."}), 500
 
-        # Build system prompt with latest analysis context
-        system = SUPPORT_CHAT_PROMPT
-        if _latest_analysis["result"]:
-            ctx = _latest_analysis
-            system += (
-                f"\n\n--- LATEST ANALYSIS CONTEXT ---\n"
-                f"Job: {ctx['job_name']}\nBuild: {ctx['build_number']}\nAnalyzed: {ctx['timestamp']}\n\n"
-                f"{ctx['result'][:6000]}\n--- END ANALYSIS CONTEXT ---\n\n"
-                "Use this analysis data to answer questions about the latest build."
-            )
-
-        # System → conversation history → current message
-        messages = [{"role": "system", "content": system}]
-        for turn in history[-10:]:
-            if turn.get("role") in ("user", "assistant") and turn.get("content", "").strip():
-                messages.append({"role": turn["role"], "content": turn["content"]})
-
-        ctx_text = ""
-        if isinstance(context, dict) and context:
-            ctx_text = "\n\nContext:\n" + "\n".join(f"{k}: {v}" for k, v in context.items())
-        messages.append({"role": "user", "content": f"{message}{ctx_text}"})
-
-        content, usage = llm_client.chat_completion(
-            messages=messages, max_tokens=768, temperature=0.1,
-            frequency_penalty=0, presence_penalty=0.1,
+        # Use the agentic chat with tool use
+        result = agentic_chat(
+            message=message,
+            history=history,
+            latest_analysis=_latest_analysis,
         )
-        return jsonify({"success": True, "response": content, "usage": usage})
+
+        return jsonify({
+            "success": True,
+            "response": result["response"],
+            "tools_used": result.get("tools_used", []),
+        })
 
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -432,6 +426,77 @@ def delete_analysis(analysis_id):
         if result.deleted_count == 0:
             return jsonify({"success": False, "error": "Analysis not found"}), 404
         return jsonify({"success": True, "message": "Analysis deleted"})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# Feedback (👍/👎)
+
+@app.route("/api/feedback", methods=["POST"])
+def submit_feedback():
+    """Store user feedback (thumbs up/down + optional correction)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        analysis_id = data.get("analysis_id", "")
+        rating = data.get("rating", "")  # "positive" or "negative"
+        correction = data.get("correction", "").strip()
+        job_name = data.get("job_name", "")
+
+        if rating not in ("positive", "negative"):
+            return jsonify({"success": False, "error": "Rating must be 'positive' or 'negative'"}), 400
+
+        doc = {
+            "analysis_id": analysis_id,
+            "job_name": job_name,
+            "rating": rating,
+            "correction": correction,
+            "user_id": _user_id(),
+            "timestamp": datetime.now().isoformat(),
+        }
+        feedback_collection.insert_one(doc)
+        print(f"[FEEDBACK] {rating} for {analysis_id}{' with correction' if correction else ''}")
+
+        return jsonify({"success": True, "message": "Feedback recorded. Thank you!"})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/feedback/stats", methods=["GET"])
+def feedback_stats():
+    """Get aggregate feedback statistics."""
+    try:
+        total = feedback_collection.count_documents({})
+        positive = feedback_collection.count_documents({"rating": "positive"})
+        negative = feedback_collection.count_documents({"rating": "negative"})
+        corrections = feedback_collection.count_documents({"correction": {"$exists": True, "$ne": ""}})
+
+        return jsonify({
+            "success": True,
+            "total": total,
+            "positive": positive,
+            "negative": negative,
+            "corrections": corrections,
+            "accuracy_rate": round(positive / total * 100, 1) if total > 0 else 0,
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# RAG search endpoint
+
+@app.route("/api/similar-analyses", methods=["POST"])
+def search_similar():
+    """Search for similar past analyses via RAG."""
+    try:
+        data = request.get_json(silent=True) or {}
+        query = (data.get("query") or "").strip()
+        job_name = data.get("job_name")
+
+        if not query:
+            return jsonify({"success": False, "error": "Query text required"}), 400
+
+        results = find_similar_analyses(query, job_name=job_name)
+        return jsonify({"success": True, "similar": results})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
