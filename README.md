@@ -189,11 +189,34 @@ MONGODB_PASSWORD=sample123
 MONGODB_AUTH_DB=admin
 
 # ── SMTP (email delivery) ──
-SMTP_SERVER=smtp3.hpe.com
-SMTP_PORT=25
-SMTP_USE_TLS=false
+SMTP_SERVER=smtp.example.com
+SMTP_PORT=587
+SMTP_FROM_EMAIL=noreply@example.com
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 ```
+
+#### 📧 Setting Up SMTP for Email Reports
+
+To enable the **email report** feature, configure the SMTP variables in your `.env` file:
+
+```
+SMTP_SERVER=smtp.office365.com
+SMTP_PORT=587
+SMTP_FROM_EMAIL=your-name@hpe.com
+SMTP_USERNAME=your-name@hpe.com
+SMTP_PASSWORD=your-password
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
+```
+
+> ⚠️ If your HPE account uses **SSO / MFA**, you may need to generate an App Password in your [Microsoft account security settings](https://mysignins.microsoft.com/security-info) or ask your IT admin to allow SMTP AUTH for your mailbox.
+
+**Testing your setup:** Once configured, hit the **Test Email** button in the UI or call `POST /api/email-test` with `{ "to": "your-email@example.com" }` to verify connectivity.
+
+**Testing your setup:** Once configured, hit the **Test Email** button in the UI or call `POST /api/email-test` with `{ "to": "your-email@example.com" }` to verify connectivity.
 
 ### 5. Install & Start the Backend
 
