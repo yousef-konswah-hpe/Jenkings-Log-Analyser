@@ -5,9 +5,10 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from config import llm_client, CHUNK_SIZE, TOKENS_PER_CHUNK, CHARS_PER_TOKEN  # must be first (sets sys.path)
+from config import llm_client, CHUNK_SIZE, TOKENS_PER_CHUNK, CHARS_PER_TOKEN, feedback_collection  # must be first (sets sys.path)
 from common.llm_client import LLMClientError
 from prompts import CONDENSE_PROMPT, ANALYSIS_TOOLS, COMPILE_PROMPT
+from rag import find_similar_analyses, format_rag_context
 
 
 # Log condensing
@@ -123,7 +124,33 @@ def _format_tool_results(tool_results: dict[str, str]) -> str:
     return "\n\n".join(sections)
 
 
-def _compile_report(tool_results_text: str) -> str:
+def _get_feedback_context(log_text: str) -> str:
+    """Retrieve relevant past user corrections to inject as few-shot examples."""
+    try:
+        corrections = list(
+            feedback_collection.find(
+                {"correction": {"$exists": True, "$ne": ""}}
+            ).sort("timestamp", -1).limit(3)
+        )
+        if not corrections:
+            return ""
+        lines = ["--- USER CORRECTIONS (learn from these) ---"]
+        for c in corrections:
+            lines.append(
+                f"- User corrected: \"{c.get('correction', '')[:200]}\""
+                f" (for job: {c.get('job_name', 'unknown')})"
+            )
+        lines.append("--- END CORRECTIONS ---\n")
+        lines.append(
+            "Take these past corrections into account. "
+            "Avoid making the same mistakes the user previously flagged.\n\n"
+        )
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
+def _compile_report(tool_results_text: str, rag_context: str = "", feedback_context: str = "") -> str:
     """Compile tool results into a final report with root cause & fixes."""
     if not llm_client.is_configured():
         return f"[ERROR] LLM not configured.\n\nRaw results:\n{tool_results_text}"
@@ -133,7 +160,11 @@ def _compile_report(tool_results_text: str) -> str:
         report, usage = llm_client.chat_completion(
             messages=[
                 {"role": "system", "content": "You are a Jenkins CI/CD expert. Create clear, actionable build analysis reports."},
-                {"role": "user", "content": COMPILE_PROMPT.format(tool_results=tool_results_text)},
+                {"role": "user", "content": COMPILE_PROMPT.format(
+                    tool_results=tool_results_text,
+                    rag_context=rag_context,
+                    feedback_context=feedback_context,
+                )},
             ],
             max_tokens=1536,
             temperature=0,
@@ -147,8 +178,12 @@ def _compile_report(tool_results_text: str) -> str:
 
 # Public API
 
-def analyze_jenkins_log(log_content: str) -> str:
-    """Full pipeline: condense (if needed) → parallel tools → compile report."""
+def analyze_jenkins_log(log_content: str, job_name: str = "") -> dict:
+    """
+    Full pipeline: condense → parallel tools → RAG lookup → compile → ReAct refine.
+
+    Returns dict with keys: report, similar_analyses, react_trace
+    """
     try:
         print(f"[AI] Starting analysis ({len(log_content)} chars)")
 
@@ -157,27 +192,63 @@ def analyze_jenkins_log(log_content: str) -> str:
         if len(working_log) > CHUNK_SIZE:
             working_log = condense_large_log(working_log)
             if not working_log or working_log.startswith("[ERROR]"):
-                return "[AI ANALYSIS ERROR]: Failed to condense large log"
+                return {"report": "[AI ANALYSIS ERROR]: Failed to condense large log", "similar_analyses": [], "react_trace": []}
 
         # Run parallel tools
         tool_results = _run_parallel_tools(working_log)
         if not any(not v.startswith("[ERROR]") for v in tool_results.values()):
-            return "[AI ANALYSIS ERROR]: All analysis tools failed"
+            return {"report": "[AI ANALYSIS ERROR]: All analysis tools failed", "similar_analyses": [], "react_trace": []}
+
+        # RAG: find similar past failures
+        similar_analyses = []
+        rag_context = ""
+        try:
+            similar_analyses = find_similar_analyses(working_log, job_name=job_name or None)
+            rag_context = format_rag_context(similar_analyses)
+            if similar_analyses:
+                print(f"[AI] RAG found {len(similar_analyses)} similar past failures")
+        except Exception as exc:
+            print(f"[AI] RAG lookup failed (non-fatal): {exc}")
+
+        # Feedback: get past user corrections
+        feedback_context = _get_feedback_context(working_log)
 
         # Compile final report
         text = _format_tool_results(tool_results)
-        report = _compile_report(text)
+        report = _compile_report(text, rag_context=rag_context, feedback_context=feedback_context)
         if not report or report.startswith("[ERROR]"):
-            return f"[AI ANALYSIS ERROR]: Report compilation failed\n\n{text}"
+            return {"report": f"[AI ANALYSIS ERROR]: Report compilation failed\n\n{text}", "similar_analyses": similar_analyses, "react_trace": []}
 
-        return report if report.strip() else "[AI ANALYSIS ERROR]: Empty response"
+        if not report.strip():
+            return {"report": "[AI ANALYSIS ERROR]: Empty response", "similar_analyses": similar_analyses, "react_trace": []}
+
+        # ReAct: self-evaluate and refine if needed
+        react_trace = []
+        try:
+            from react_loop import react_refine
+            react_result = react_refine(report, log_content)
+            report = react_result["report"]
+            react_trace = react_result["reasoning_trace"]
+            if react_result["iterations"] > 0:
+                print(f"[AI] ReAct completed {react_result['iterations']} iteration(s)")
+        except Exception as exc:
+            print(f"[AI] ReAct failed (non-fatal): {exc}")
+
+        return {
+            "report": report,
+            "similar_analyses": similar_analyses,
+            "react_trace": react_trace,
+        }
 
     except (LLMClientError, Exception) as exc:
-        return f"[AI ANALYSIS ERROR]: {exc}"
+        return {"report": f"[AI ANALYSIS ERROR]: {exc}", "similar_analyses": [], "react_trace": []}
 
 
-def safe_analyze_with_retry(log_content: str, max_retries: int = 3) -> str:
-    """Wrap analyze_jenkins_log with retry & exponential back-off."""
+def safe_analyze_with_retry(log_content: str, max_retries: int = 3, job_name: str = "") -> dict:
+    """Wrap analyze_jenkins_log with retry & exponential back-off.
+
+    Returns dict: {report, similar_analyses, react_trace}
+    """
     for attempt in range(1, max_retries + 1):
         try:
             if attempt > 1:
@@ -185,15 +256,16 @@ def safe_analyze_with_retry(log_content: str, max_retries: int = 3) -> str:
                 print(f"[AI] Retry in {delay:.1f}s …")
                 time.sleep(delay)
 
-            result = analyze_jenkins_log(log_content)
-            if result and not result.startswith(("[AI ANALYSIS ERROR]", "[ERROR]")):
+            result = analyze_jenkins_log(log_content, job_name=job_name)
+            report = result.get("report", "")
+            if report and not report.startswith(("[AI ANALYSIS ERROR]", "[ERROR]")):
                 print(f"[AI] Analysis succeeded (attempt {attempt})")
                 return result
 
         except Exception as exc:
             print(f"[AI] Attempt {attempt} error: {exc}")
 
-    return f"[AI ANALYSIS ERROR]: Failed after {max_retries} attempts"
+    return {"report": f"[AI ANALYSIS ERROR]: Failed after {max_retries} attempts", "similar_analyses": [], "react_trace": []}
 
 
 # ── Confidence scoring ──
@@ -206,7 +278,6 @@ _EXPECTED_SECTIONS = [
 def compute_confidence(report: str, log_content: str) -> dict:
     """Score the analysis report quality on a 0-100 scale."""
     lower = report.lower()
-    log_lower = log_content.lower()
 
     # 1. Evidence coverage — how many expected sections are present (0-30)
     found = sum(1 for s in _EXPECTED_SECTIONS if s in lower)

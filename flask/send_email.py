@@ -10,19 +10,20 @@ class EmailReport:
     """Sends analysis reports via SMTP using environment-configured server."""
 
     def __init__(self):
-        self.from_email = "projects@hpelabs.net"
+        self.from_email = os.getenv("SMTP_FROM_EMAIL")
 
         # SMTP configuration from environment variables
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp3.hpe.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "25"))
+        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.office365.com")
+        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
         self.smtp_username = os.getenv("SMTP_USERNAME")
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() in ("1", "true", "yes")
-        self.use_tls = os.getenv("SMTP_USE_TLS", "false").lower() in ("1", "true", "yes")
+        self.use_tls = os.getenv("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
-        # Default email recipients
-        self.default_recipients = ["nagasai.chintalapati@hpe.com"]
-        self.to_email = self.default_recipients[0]
+        # Default email recipients (override via SMTP_DEFAULT_RECIPIENT env var)
+        self.default_recipients = [os.getenv("SMTP_DEFAULT_RECIPIENT", "")]
+        self.default_recipients = [r for r in self.default_recipients if r]
+        self.to_email = self.default_recipients[0] if self.default_recipients else ""
 
     # Public API
 

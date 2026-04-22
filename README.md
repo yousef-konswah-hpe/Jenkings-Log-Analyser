@@ -172,28 +172,41 @@ cp .env.example .env
 # Edit .env with your settings
 ```
 
-**`.env` reference:**
+**`.env` reference (must be placed at `flask/.env`):**
 
 ```env
-# ── LLM ──
+# ── LLM (Ollama) ──
 LLM_PROVIDER=ollama
-LLM_MODEL=llama3.1:8b
-LLM_BASE_URL=http://localhost:11434/api/chat
+LLM_API_URL=http://localhost:11434/api/chat
+LLM_MODEL_NAME=llama3.1:8b
+LLM_AUTH_TOKEN=                     # not needed for local Ollama
+LLM_TIMEOUT_SECONDS=600
+LLM_MAX_RETRIES=3
+LLM_VERIFY_TLS=true
 
 # ── MongoDB ──
-MONGODB_HOST=localhost
-MONGODB_PORT=27017
-MONGODB_DB=jenkins
-MONGODB_USERNAME=sample
-MONGODB_PASSWORD=sample123
-MONGODB_AUTH_DB=admin
+# Leave USER/PASSWORD empty for local dev (no auth needed).
+# Only set these if your MongoDB instance has authentication enabled.
+MONGO_USER=
+MONGO_PASSWORD=
+MONGO_HOST=localhost
+MONGO_PORT=27017
+MONGO_DB=jenkins
+MONGO_AUTH_DB=admin
 
-# ── SMTP (email delivery) ──
-SMTP_SERVER=smtp3.hpe.com
-SMTP_PORT=25
-SMTP_USE_TLS=false
+# ── SMTP (Outlook / HPE) ──
+SMTP_SERVER=smtp.office365.com
+SMTP_PORT=587
+SMTP_FROM_EMAIL=your-name@hpe.com
+SMTP_USERNAME=your-name@hpe.com
+SMTP_PASSWORD=your-password-or-app-password
+SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 ```
+
+> ⚠️ **SMTP note:** If your HPE account uses **SSO / MFA**, you may need to generate an App Password in your [Microsoft account security settings](https://mysignins.microsoft.com/security-info) or ask your IT admin to allow SMTP AUTH for your mailbox.
+>
+> **Test it:** Hit the **Test Email** button in the UI or call `POST /api/email-test` with `{ "to": "your-email@hpe.com" }`.
 
 ### 5. Install & Start the Backend
 

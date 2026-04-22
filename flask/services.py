@@ -1,6 +1,7 @@
 """Business-logic services: Jenkins log processing, email, analysis persistence."""
 
 import os
+import threading
 from datetime import datetime
 
 import jenkins
@@ -9,6 +10,7 @@ from bson.objectid import ObjectId
 from analysis import safe_analyze_with_retry
 from config import jobs_collection, analyses_collection
 from send_email import EmailReport
+from rag import store_embedding
 
 
 def process_jenkins_log(job_id, jenkins_url=None, username=None, password=None):
@@ -47,7 +49,8 @@ def process_jenkins_log(job_id, jenkins_url=None, username=None, password=None):
 
         print(f"[SVC] Analysing {job_name} #{build_number} ({len(log_text)} chars)")
 
-        analysis = safe_analyze_with_retry(log_text)
+        result = safe_analyze_with_retry(log_text, job_name=job_name)
+        analysis = result.get("report", "")
         if analysis.startswith("[AI ANALYSIS ERROR]"):
             return None, f"AI analysis failed: {analysis}"
 
@@ -57,6 +60,8 @@ def process_jenkins_log(job_id, jenkins_url=None, username=None, password=None):
             "build_number": build_number,
             "job_details": job,
             "log_text": log_text,
+            "similar_analyses": result.get("similar_analyses", []),
+            "react_trace": result.get("react_trace", []),
         }, None
 
     except jenkins.NotFoundException:
@@ -92,7 +97,7 @@ def send_email_report(analysis_data: dict, email_address, job_id) -> bool:
 
 
 def save_analysis(job_name: str, build_number, analysis_text: str, log_content: str = "", user_id: str = "") -> str | None:
-    """Persist an analysis result in MongoDB and return its ID."""
+    """Persist an analysis result in MongoDB, then generate its RAG embedding."""
     try:
         doc = {
             "job_name": job_name,
@@ -103,8 +108,17 @@ def save_analysis(job_name: str, build_number, analysis_text: str, log_content: 
             "timestamp": datetime.now().isoformat(),
         }
         result = analyses_collection.insert_one(doc)
-        print(f"[SVC] Saved analysis {result.inserted_id}")
-        return str(result.inserted_id)
+        analysis_id = str(result.inserted_id)
+        print(f"[SVC] Saved analysis {analysis_id}")
+
+        # Generate and store RAG embedding in background
+        threading.Thread(
+            target=store_embedding,
+            args=(analysis_id, job_name, analysis_text),
+            daemon=True,
+        ).start()
+
+        return analysis_id
     except Exception as exc:
         print(f"[SVC] Save failed: {exc}")
         return None
