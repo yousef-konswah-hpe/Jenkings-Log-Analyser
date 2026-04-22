@@ -511,16 +511,17 @@ def email_test():
         if not to_email:
             return jsonify({"success": False, "error": 'Provide "email" in JSON body'}), 400
 
-        smtp_server = os.getenv("SMTP_SERVER", "mxdns01.hpelabs.net")
-        smtp_port = int(os.getenv("SMTP_PORT", "0"))
+        smtp_server = os.getenv("SMTP_SERVER", "smtp.office365.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
         smtp_username = os.getenv("SMTP_USERNAME")
         smtp_password = os.getenv("SMTP_PASSWORD")
         use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() in ("1", "true", "yes")
-        use_tls = os.getenv("SMTP_USE_TLS", "false").lower() in ("1", "true", "yes")
+        use_tls = os.getenv("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
+        from_email = os.getenv("SMTP_FROM_EMAIL")
         msg = MIMEText("Test email from Jenkins Log Analyzer.\nSMTP is working!", "plain")
         msg["Subject"] = "Jenkins Log Analyzer — SMTP Test"
-        msg["From"] = "projects@hpelabs.net"
+        msg["From"] = from_email
         msg["To"] = to_email
 
         ports = [smtp_port] if smtp_port else [25, 587, 465]
