@@ -63,6 +63,7 @@ COMPILE_PROMPT = (
     "7. **Fix Suggestions** — For EVERY error found, provide a specific actionable fix "
     "(exact commands, config changes, or code fixes)\n\n"
     "Rules:\n"
+    "- Use **bold text** for section headings (e.g., **Summary**, **Errors & Failures**). Do NOT use ### markdown headers.\n"
     "- Remove duplicate information across sections\n"
     "- Every error MUST have a corresponding fix suggestion\n"
     "- Keep the report concise but complete\n"
