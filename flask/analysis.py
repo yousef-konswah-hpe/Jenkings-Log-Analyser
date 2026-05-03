@@ -37,6 +37,44 @@ def _condense_chunk(chunk: str) -> str:
         return f"[ERROR] {exc}"
 
 
+def _extract_primary_traceback(text: str) -> str:
+    """Extract the deepest/most-specific traceback from the log.
+    
+    Prioritizes actual test failures (Traceback/AssertionError/pytest failures)
+    over log-level errors (Jira, TestRail, SMTP failures).
+    Returns the most relevant failure context for the root cause analysis.
+    """
+    # Pattern 1: Playwright strict mode errors (highest priority)
+    playwright_match = re.search(
+        r"(playwright\._impl\._errors\.Error:.*?resolved to \d+ elements.*?)(?=\n(?:During handling|Traceback|===)|\Z)",
+        text,
+        re.DOTALL | re.IGNORECASE
+    )
+    if playwright_match:
+        return f"[PLAYWRIGHT ERROR]\n{playwright_match.group(1).strip()}"
+    
+    # Pattern 2: pytest assertion failures
+    pytest_match = re.search(
+        r"(Traceback.*?AssertionError.*?)(?=\n(?:FAILED|During handling|===)|\Z)",
+        text,
+        re.DOTALL | re.IGNORECASE
+    )
+    if pytest_match:
+        return f"[PYTEST ASSERTION]\n{pytest_match.group(1).strip()}"
+    
+    # Pattern 3: Test framework errors (unittest, pytest)
+    test_framework_match = re.search(
+        r"((?:FAILED|ERROR).*?(?:AssertionError|Error:|Exception:).*?)(?=\n(?:FAILED|PASSED|===)|\Z)",
+        text,
+        re.DOTALL | re.IGNORECASE
+    )
+    if test_framework_match:
+        return f"[TEST FRAMEWORK ERROR]\n{test_framework_match.group(1).strip()}"
+    
+    # If no test framework failure found, return empty (log-level errors are secondary)
+    return ""
+
+
 def condense_large_log(text: str, chunk_size: int = CHUNK_SIZE) -> str:
     """Recursively split → condense → merge until the text fits one chunk."""
     print(f"[AI] Condensing large log: {len(text)} chars")
@@ -213,8 +251,19 @@ def analyze_jenkins_log(log_content: str, job_name: str = "") -> dict:
         # Feedback: get past user corrections
         feedback_context = _get_feedback_context(working_log)
 
+        # Extract primary traceback to guide root cause identification
+        primary_traceback = _extract_primary_traceback(log_content)
+        traceback_hint = ""
+        if primary_traceback:
+            traceback_hint = (
+                f"\n\n--- PRIMARY TEST FAILURE (use this to identify root cause) ---\n"
+                f"{primary_traceback}\n"
+                f"--- END PRIMARY FAILURE ---\n"
+            )
+
         # Compile final report
         text = _format_tool_results(tool_results)
+        text = traceback_hint + text
         report = _compile_report(text, rag_context=rag_context, feedback_context=feedback_context)
         if not report or report.startswith("[ERROR]"):
             return {"report": f"[AI ANALYSIS ERROR]: Report compilation failed\n\n{text}", "similar_analyses": similar_analyses, "react_trace": []}

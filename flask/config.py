@@ -78,30 +78,32 @@ except Exception:
 
 # LLM Client
 
-LLM_API_URL = os.getenv("LLM_API_URL", "")
-LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "meta/llama-3.1-70b-instruct")
-LLM_AUTH_TOKEN = os.getenv("LLM_AUTH_TOKEN", "")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
+# GitHub Copilot / OpenAI SDK configuration
+COPILOT_API_URL = os.getenv("COPILOT_API_URL", "https://api.githubcopilot.com")
+COPILOT_API_KEY = os.getenv("COPILOT_API_KEY", os.getenv("GITHUB_TOKEN", ""))
+LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gpt-4o")
 LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT_SECONDS", "600"))
 LLM_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
-LLM_VERIFY_TLS = env_bool("LLM_VERIFY_TLS", True)
+
+# Keep LLM_API_URL / LLM_AUTH_TOKEN as aliases for backwards compat
+LLM_API_URL = COPILOT_API_URL
+LLM_AUTH_TOKEN = COPILOT_API_KEY
 
 llm_client = LLMClient(
     LLMClientConfig(
-        api_url=LLM_API_URL,
-        auth_token=LLM_AUTH_TOKEN,
+        api_url=COPILOT_API_URL,
+        auth_token=COPILOT_API_KEY,
         default_model=LLM_MODEL_NAME,
-        provider=LLM_PROVIDER,
+        provider="copilot",
         timeout_seconds=LLM_TIMEOUT,
-        verify_tls=LLM_VERIFY_TLS,
         max_retries=LLM_RETRIES,
     )
 )
 
 if llm_client.is_configured():
-    print(f"[CONFIG] LLM ready (provider={LLM_PROVIDER}, model={LLM_MODEL_NAME})")
+    print(f"[CONFIG] LLM ready (provider=copilot, model={LLM_MODEL_NAME})")
 else:
-    print("[CONFIG] LLM not configured — set LLM_PROVIDER, LLM_API_URL, LLM_MODEL_NAME")
+    print("[CONFIG] LLM not configured — set COPILOT_API_KEY (or GITHUB_TOKEN) and LLM_MODEL_NAME")
 
 # Constants
 
@@ -120,8 +122,7 @@ FREQUENCY_MAP = {
 # RAG settings
 RAG_TOP_K = 3                          # number of similar analyses to retrieve
 RAG_SIMILARITY_THRESHOLD = 0.65        # minimum cosine similarity
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
 # ReAct settings
 REACT_MAX_ITERATIONS = 3               # max self-correction loops

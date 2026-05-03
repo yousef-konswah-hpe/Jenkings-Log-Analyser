@@ -221,8 +221,8 @@ export function AnalysisResultCard({
                   {similarity.exactMatches.length ? (
                     <div className="mt-2">
                       <p className="font-medium text-slate-800 dark:text-slate-100">100% similar results</p>
-                      {similarity.exactMatches.map((item) => (
-                        <p key={item} className="text-slate-700 dark:text-slate-200">• {item}</p>
+                      {similarity.exactMatches.map((item, idx) => (
+                        <p key={`exact-match-${idx}`} className="text-slate-700 dark:text-slate-200">• {item}</p>
                       ))}
                     </div>
                   ) : null}
