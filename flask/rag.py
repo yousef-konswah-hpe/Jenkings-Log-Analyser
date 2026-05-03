@@ -1,7 +1,7 @@
 """RAG (Retrieval-Augmented Generation) over historical analyses.
 
-Generates embeddings via Ollama's /api/embeddings endpoint, stores them in
-MongoDB, and retrieves the top-K most similar past analyses for a given query.
+Generates embeddings via the OpenAI SDK (GitHub Copilot compatible), stores
+them in MongoDB, and retrieves the top-K most similar past analyses.
 """
 
 import re
@@ -9,11 +9,12 @@ import time
 from typing import Optional
 
 import numpy as np
-import requests
+from openai import OpenAI
 
 from config import (
     embeddings_collection,
-    OLLAMA_BASE_URL,
+    COPILOT_API_URL,
+    COPILOT_API_KEY,
     EMBEDDING_MODEL,
     RAG_TOP_K,
     RAG_SIMILARITY_THRESHOLD,
@@ -22,20 +23,26 @@ from config import (
 
 #  Embedding helper
 
+def _get_openai_client() -> OpenAI:
+    """Return an OpenAI SDK client configured for the Copilot endpoint."""
+    return OpenAI(
+        api_key=COPILOT_API_KEY,
+        base_url=COPILOT_API_URL or None,
+        timeout=30.0,
+        max_retries=0,
+    )
+
+
 def _get_embedding(text: str, max_chars: int = 8000) -> Optional[list[float]]:
-    """Request an embedding vector from Ollama."""
+    """Request an embedding vector via the OpenAI embeddings API."""
     truncated = text[:max_chars]
     try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/embeddings",
-            json={"model": EMBEDDING_MODEL, "prompt": truncated},
-            timeout=30,
+        client = _get_openai_client()
+        response = client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=truncated,
         )
-        if resp.status_code == 200:
-            data = resp.json()
-            return data.get("embedding")
-        print(f"[RAG] Embedding request failed: HTTP {resp.status_code}")
-        return None
+        return response.data[0].embedding
     except Exception as exc:
         print(f"[RAG] Embedding error: {exc}")
         return None

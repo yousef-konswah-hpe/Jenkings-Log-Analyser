@@ -14,6 +14,7 @@ from bson.objectid import ObjectId
 from config import (
     llm_client, analyses_collection, feedback_collection,
 )
+from prompts import SUPPORT_CHAT_PROMPT
 from rag import find_similar_analyses
 
 
@@ -50,6 +51,7 @@ TOOL_DEFINITIONS = [
 TOOL_NAMES = [t["name"] for t in TOOL_DEFINITIONS]
 
 AGENT_SYSTEM_PROMPT = (
+    f"{SUPPORT_CHAT_PROMPT}\n\n"
     "You are an intelligent Jenkins CI/CD support agent with access to tools.\n\n"
     "AVAILABLE TOOLS:\n{tool_descriptions}\n\n"
     "TOOL USE PROTOCOL:\n"
@@ -59,10 +61,12 @@ AGENT_SYSTEM_PROMPT = (
     "You may call multiple tools sequentially if needed.\n"
     "If you don't need any tools, just answer directly.\n\n"
     "RESPONSE RULES:\n"
-    "1. Be concise — use bullet points and numbered lists\n"
+    "1. Use tools whenever precision depends on current analysis data, history, or raw log evidence\n"
     "2. When citing past analyses, include the job name and similarity score\n"
-    "3. Provide actionable fixes with specific commands\n"
-    "4. If you used tools, briefly mention what you looked up\n\n"
+    "3. Quote exact error text, selectors, test names, stage names, or commands whenever available\n"
+    "4. Distinguish PRIMARY root cause from secondary follow-on errors\n"
+    "5. If you used tools, briefly mention what you looked up\n"
+    "6. If evidence is incomplete, state the gap explicitly and ask for only the missing input\n\n"
 )
 
 
@@ -280,7 +284,11 @@ def agentic_chat(
         messages.append({"role": "assistant", "content": content})
         messages.append({
             "role": "user",
-            "content": f"TOOL_RESULT ({tool_name}):\n{tool_result}\n\nNow provide your answer to the user based on this information.",
+            "content": (
+                f"TOOL_RESULT ({tool_name}):\n{tool_result}\n\n"
+                "Now provide your answer to the user based only on the confirmed information above. "
+                "Be precise, identify the primary root cause if relevant, and give specific next steps."
+            ),
         })
 
     # Max rounds exhausted — return last response

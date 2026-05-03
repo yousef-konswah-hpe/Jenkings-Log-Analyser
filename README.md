@@ -204,7 +204,7 @@ SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 ```
 
-> ⚠️ **SMTP note:** If your HPE account uses **SSO / MFA**, you may need to generate an App Password in your [Microsoft account security settings](https://mysignins.microsoft.com/security-info) or ask your IT admin to allow SMTP AUTH for your mailbox.
+> **SMTP note:** If your HPE account uses **SSO / MFA**, you may need to generate an App Password in your [Microsoft account security settings](https://mysignins.microsoft.com/security-info) or ask your IT admin to allow SMTP AUTH for your mailbox.
 >
 > **Test it:** Hit the **Test Email** button in the UI or call `POST /api/email-test` with `{ "to": "your-email@hpe.com" }`.
 
